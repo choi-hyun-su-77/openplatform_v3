@@ -1,0 +1,32 @@
+# Traefik 정적 설정 — file provider 모드
+# Docker socket 대신 명시적 파일 기반 라우팅 사용 (Windows 호환)
+
+entryPoints:
+  web:
+    address: ":80"
+  traefik:
+    address: ":8080"
+
+api:
+  insecure: true
+  dashboard: true
+
+ping:
+  entryPoint: "traefik"
+
+metrics:
+  prometheus:
+    entryPoint: "traefik"
+    addEntryPointsLabels: true
+    addRoutersLabels: true
+    addServicesLabels: true
+
+providers:
+  file:
+    filename: /etc/traefik/dynamic.yml
+    watch: true
+
+log:
+  level: INFO
+
+accessLog: {}

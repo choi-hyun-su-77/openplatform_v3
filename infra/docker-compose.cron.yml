@@ -1,0 +1,38 @@
+# Backup 자동화 (Ops-7) — mcuadros/ofelia 사용 (docker-native cron)
+# 사용: docker compose -f infra/docker-compose.yml -f infra/docker-compose.cron.yml up -d ofelia
+
+services:
+  ofelia:
+    image: mcuadros/ofelia:latest
+    container_name: v3-ofelia
+    restart: unless-stopped
+    depends_on:
+      - postgres
+      - minio
+      - keycloak
+    command: daemon --docker
+    environment:
+      TZ: Asia/Seoul
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    labels:
+      # 매일 새벽 3시 backup.sh 실행 (호스트 스크립트 필요 → 임시로 pg_dumpall 만 수행하는 in-container job)
+      ofelia.enabled: "true"
+      ofelia.job-exec.backup-postgres.schedule: "0 0 3 * * *"
+      ofelia.job-exec.backup-postgres.container: "v3-postgres"
+      ofelia.job-exec.backup-postgres.command: "sh -c 'pg_dumpall -U platform_v3 > /tmp/backup-$(date +%Y%m%d).sql'"
+    networks: [v3-net]
+
+  # 별도 on-demand 백업 컨테이너 — docker run 으로 단발 실행
+  # 예: docker compose run --rm backup-runner
+  backup-runner:
+    image: alpine:3.19
+    container_name: v3-backup-runner
+    profiles: [backup]
+    entrypoint: ["sh", "-c"]
+    command: ["apk add --no-cache postgresql-client && pg_dumpall -h postgres -U platform_v3 > /backup/dump-$(date +%Y%m%d-%H%M%S).sql"]
+    environment:
+      PGPASSWORD: platform_v3_pass
+    volumes:
+      - ../backups:/backup
+    networks: [v3-net]

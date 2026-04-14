@@ -1,0 +1,34 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(C:\\claude\\openplatform_v3\\**)",
+      "Write(C:\\claude\\openplatform_v3\\**)",
+      "Edit(C:\\claude\\openplatform_v3\\**)",
+      "Read(C:\\claude\\openplatform\\**)",
+      "Read(C:\\claude\\openplatform_v2\\**)",
+      "Read(C:\\claude\\ts-spring-fw\\**)",
+      "Read(C:\\claude\\docker-info.xml)",
+      "Edit(C:\\claude\\docker-info.xml)",
+      "Read(C:\\claude\\port-change-report.md)",
+      "Edit(C:\\claude\\port-change-report.md)",
+      "Bash(docker compose:*)",
+      "Bash(docker ps:*)",
+      "Bash(docker logs:*)",
+      "Bash(npm:*)",
+      "Bash(mvn:*)",
+      "Bash(curl:*)",
+      "Bash(mkdir:*)",
+      "Bash(ls:*)",
+      "Bash(cp:*)",
+      "Bash(netstat:*)"
+    ],
+    "deny": [
+      "Write(C:\\claude\\ts-spring-fw\\**)",
+      "Edit(C:\\claude\\ts-spring-fw\\**)",
+      "Write(C:\\claude\\openplatform\\**)",
+      "Edit(C:\\claude\\openplatform\\**)",
+      "Write(C:\\claude\\openplatform_v2\\**)",
+      "Edit(C:\\claude\\openplatform_v2\\**)"
+    ]
+  }
+}

@@ -1,0 +1,35 @@
+node_modules/
+.venv/
+__pycache__/
+target/
+build/
+dist/
+.idea/
+.vscode/
+*.iml
+.DS_Store
+Thumbs.db
+.env
+*.log
+data/
+volumes/
+*.class
+*.jar
+!gradle/wrapper/*.jar
+!**/maven-wrapper.jar
+
+# 런타임 생성 파일
+backups/*.tar.gz
+backups/*.log
+reports/*.txt
+.playwright-mcp/
+tmp/
+.claude/settings.local.json.bak
+
+# Vite / TypeScript
+ui/dist/
+ui/node_modules/
+*.vue.ts
+
+# 상태 파일 (warn/fatal 은 남기기)
+info.md

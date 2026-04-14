@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.platform.v3.core.calendar.mapper.CalendarMapper">
+
+    <select id="selectEvents" resultType="map">
+        SELECT event_id, title, description, event_type, owner_id, dept_id,
+               start_dt, end_dt, all_day, color, location, created_at
+        FROM platform_v3.cal_event
+        WHERE deleted_at IS NULL
+          AND start_dt &lt; #{endDt}::timestamptz
+          AND end_dt   &gt; #{startDt}::timestamptz
+        <if test="ownerId != null">AND (owner_id = #{ownerId} OR event_type IN ('DEPT','COMPANY'))</if>
+        <if test="deptId != null">AND (dept_id = #{deptId} OR event_type = 'COMPANY')</if>
+        <if test="eventType != null and eventType != ''">AND event_type = #{eventType}</if>
+        ORDER BY start_dt
+    </select>
+
+    <select id="selectTodayEvents" resultType="map">
+        SELECT event_id, title, event_type, start_dt, end_dt, all_day, color
+        FROM platform_v3.cal_event
+        WHERE deleted_at IS NULL
+          AND DATE(start_dt) = CURRENT_DATE
+        <if test="ownerId != null">AND (owner_id = #{ownerId} OR event_type IN ('DEPT','COMPANY'))</if>
+        <if test="deptId != null">AND (dept_id = #{deptId} OR event_type = 'COMPANY')</if>
+        ORDER BY start_dt
+    </select>
+
+    <insert id="insertEvent" parameterType="map" useGeneratedKeys="true" keyProperty="eventId" keyColumn="event_id">
+        INSERT INTO platform_v3.cal_event
+            (title, description, event_type, owner_id, dept_id, start_dt, end_dt,
+             all_day, color, location, created_by, created_at, updated_at)
+        VALUES
+            (#{title}, #{description}, #{eventType}, #{ownerId}, #{deptId},
+             #{startDt}::timestamptz, #{endDt}::timestamptz,
+             COALESCE(#{allDay}, false), #{color}, #{location}, #{createdBy}, NOW(), NOW())
+    </insert>
+
+    <update id="updateEvent" parameterType="map">
+        UPDATE platform_v3.cal_event SET
+            title = #{title},
+            description = #{description},
+            start_dt = #{startDt}::timestamptz,
+            end_dt = #{endDt}::timestamptz,
+            all_day = COALESCE(#{allDay}, all_day),
+            color = COALESCE(#{color}, color),
+            location = COALESCE(#{location}, location),
+            updated_by = #{updatedBy},
+            updated_at = NOW()
+        WHERE event_id = #{eventId} AND deleted_at IS NULL
+    </update>
+
+    <update id="deleteEvent">
+        UPDATE platform_v3.cal_event
+        SET deleted_at = NOW(), deleted_by = #{deletedBy}
+        WHERE event_id = #{eventId}
+    </update>
+</mapper>

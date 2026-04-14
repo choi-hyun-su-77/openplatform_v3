@@ -1,0 +1,33 @@
+dn: ou=users,dc=v3,dc=local
+objectClass: organizationalUnit
+ou: users
+
+dn: uid=admin,ou=users,dc=v3,dc=local
+objectClass: inetOrgPerson
+objectClass: posixAccount
+objectClass: shadowAccount
+uid: admin
+cn: Admin User
+sn: User
+givenName: Admin
+mail: admin@v3.local
+uidNumber: 1001
+gidNumber: 1001
+homeDirectory: /home/admin
+loginShell: /bin/bash
+userPassword: admin
+
+dn: uid=user1,ou=users,dc=v3,dc=local
+objectClass: inetOrgPerson
+objectClass: posixAccount
+objectClass: shadowAccount
+uid: user1
+cn: User One
+sn: One
+givenName: User
+mail: user1@v3.local
+uidNumber: 1002
+gidNumber: 1002
+homeDirectory: /home/user1
+loginShell: /bin/bash
+userPassword: user1

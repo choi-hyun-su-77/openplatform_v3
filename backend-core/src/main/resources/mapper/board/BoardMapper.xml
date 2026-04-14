@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.platform.v3.core.board.mapper.BoardMapper">
+
+    <select id="selectPosts" resultType="map">
+        SELECT p.post_id, p.board_type, p.dept_id, d.dept_name, p.title, p.created_by,
+               p.view_count, p.is_pinned, p.created_at, p.updated_at
+        FROM platform_v3.bd_post p
+        LEFT JOIN platform_v3.org_department d ON p.dept_id = d.dept_id
+        WHERE p.deleted_at IS NULL
+        <if test="boardType != null and boardType != ''">AND p.board_type = #{boardType}</if>
+        <if test="deptId != null">AND p.dept_id = #{deptId}</if>
+        <if test="keyword != null and keyword != ''">
+            AND (p.title LIKE '%' || #{keyword} || '%' OR p.content LIKE '%' || #{keyword} || '%')
+        </if>
+        ORDER BY p.is_pinned DESC, p.created_at DESC
+        LIMIT 100
+    </select>
+
+    <select id="selectPostById" resultType="map">
+        SELECT p.post_id, p.board_type, p.dept_id, d.dept_name, p.title, p.content,
+               p.created_by, p.view_count, p.is_pinned, p.attachments,
+               p.created_at, p.updated_at
+        FROM platform_v3.bd_post p
+        LEFT JOIN platform_v3.org_department d ON p.dept_id = d.dept_id
+        WHERE p.post_id = #{postId} AND p.deleted_at IS NULL
+    </select>
+
+    <update id="incrementViewCount">
+        UPDATE platform_v3.bd_post SET view_count = view_count + 1 WHERE post_id = #{postId}
+    </update>
+
+    <insert id="insertPost" parameterType="map" useGeneratedKeys="true" keyProperty="postId" keyColumn="post_id">
+        INSERT INTO platform_v3.bd_post
+            (board_type, dept_id, title, content, created_by, is_pinned, attachments, created_at, updated_at)
+        VALUES
+            (#{boardType}, #{deptId}, #{title}, #{content}, #{createdBy},
+             COALESCE(#{isPinned}, 'N'), #{attachments}::jsonb, NOW(), NOW())
+    </insert>
+
+    <update id="updatePost" parameterType="map">
+        UPDATE platform_v3.bd_post SET
+            title = #{title},
+            content = #{content},
+            is_pinned = COALESCE(#{isPinned}, is_pinned),
+            attachments = COALESCE(#{attachments}::jsonb, attachments),
+            updated_by = #{updatedBy},
+            updated_at = NOW()
+        WHERE post_id = #{postId} AND deleted_at IS NULL
+    </update>
+
+    <update id="deletePost">
+        UPDATE platform_v3.bd_post
+        SET deleted_at = NOW(), deleted_by = #{deletedBy}
+        WHERE post_id = #{postId}
+    </update>
+</mapper>

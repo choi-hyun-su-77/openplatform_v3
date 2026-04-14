@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>openplatform v3 — 접속 정보 (URL / 계정)</title>
+<style>
+  @page { size: A4; margin: 15mm 12mm; }
+  body { font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', -apple-system, sans-serif; font-size: 10pt; line-height: 1.55; color: #1e293b; }
+  h1 { color: #1e40af; border-bottom: 3px solid #3b82f6; padding-bottom: 6px; margin-top: 18px; font-size: 18pt; }
+  h2 { color: #1e3a8a; margin-top: 18px; font-size: 13pt; page-break-after: avoid; }
+  code { background: #f1f5f9; padding: 1px 5px; border-radius: 3px; font-size: 9pt; font-family: 'Consolas', 'Monaco', monospace; color: #1e40af; }
+  pre { background: #0f172a; color: #e2e8f0; padding: 12px 14px; border-radius: 6px; font-size: 9pt; line-height: 1.5; page-break-inside: avoid; font-family: 'Consolas', 'Monaco', monospace; }
+  table { border-collapse: collapse; width: 100%; margin: 8px 0; font-size: 9.5pt; page-break-inside: avoid; }
+  th, td { border: 1px solid #cbd5e1; padding: 6px 10px; text-align: left; vertical-align: top; }
+  th { background: #e0e7ff; font-weight: 600; color: #1e40af; }
+  tr:nth-child(even) { background: #f8fafc; }
+  .cred { font-family: 'Consolas', monospace; color: #047857; font-weight: 600; }
+  .url { font-family: 'Consolas', monospace; color: #1e40af; }
+  header { text-align: center; padding: 20px 0; background: linear-gradient(135deg, #3b82f6, #1e40af); color: white; margin: -15mm -12mm 22px -12mm; }
+  header h1 { color: white; border: none; font-size: 22pt; margin: 0; }
+  header .sub { font-size: 11pt; opacity: 0.9; margin-top: 4px; }
+  .emoji { font-size: 14pt; }
+  blockquote { border-left: 4px solid #3b82f6; padding: 10px 16px; margin: 12px 0; background: #eff6ff; }
+  strong { color: #1e40af; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>openplatform v3 접속 정보</h1>
+  <div class="sub">URL &middot; 계정 &middot; API 엔드포인트 전체 가이드 · 2026-04-15</div>
+</header>
+
+<h1>1. 주 접속 URL (브라우저)</h1>
+
+<table>
+  <tr><th>서비스</th><th>URL</th><th>계정</th></tr>
+  <tr>
+    <td><strong>포털 UI (Vite dev)</strong></td>
+    <td class="url">http://localhost:25174</td>
+    <td class="cred">user1 / user1</td>
+  </tr>
+  <tr>
+    <td>포털 UI (nginx prod)</td>
+    <td class="url">http://localhost:19173</td>
+    <td class="cred">동일</td>
+  </tr>
+  <tr>
+    <td><strong>Keycloak 관리자</strong></td>
+    <td class="url">http://localhost:19281</td>
+    <td class="cred">admin / admin (master realm)</td>
+  </tr>
+</table>
+
+<h1>2. 통합 그룹웨어 서비스 (포털 SSO 연결)</h1>
+
+<table>
+  <tr><th>서비스</th><th>URL</th><th>로그인 방식</th></tr>
+  <tr>
+    <td><strong>Rocket.Chat (메신저)</strong></td>
+    <td class="url">http://localhost:19065</td>
+    <td>"Keycloak SSO" 버튼 → 자동 로그인<br>로컬: <span class="cred">v3admin / Admin1234!</span></td>
+  </tr>
+  <tr>
+    <td><strong>Wiki.js (위키)</strong></td>
+    <td class="url">http://localhost:19001</td>
+    <td>"Keycloak SSO" 버튼 → 자동 로그인<br>로컬: <span class="cred">admin@v3.local / Admin1234!</span></td>
+  </tr>
+  <tr>
+    <td><strong>Stalwart (웹메일 관리)</strong></td>
+    <td class="url">http://localhost:19480</td>
+    <td><span class="cred">user1 / user1</span> (LDAP Federation)<br>관리자: <span class="cred">admin / b3C2k27fWn</span></td>
+  </tr>
+  <tr>
+    <td><strong>MinIO Console (파일)</strong></td>
+    <td class="url">http://localhost:19901</td>
+    <td>"Keycloak SSO" 버튼<br>로컬: <span class="cred">v3minio / v3minio_pass</span></td>
+  </tr>
+  <tr>
+    <td><strong>LiveKit (화상회의)</strong></td>
+    <td>포털 → 화상회의 메뉴</td>
+    <td>BFF 가 Keycloak JWT 로 자동 토큰 발급</td>
+  </tr>
+</table>
+
+<h1>3. 관리 / 관측 도구</h1>
+
+<table>
+  <tr><th>도구</th><th>URL</th><th>계정</th></tr>
+  <tr>
+    <td><strong>Grafana</strong></td>
+    <td class="url">http://localhost:19300</td>
+    <td class="cred">admin / admin (초기 로그인 후 변경 유도)</td>
+  </tr>
+  <tr>
+    <td>Prometheus</td>
+    <td class="url">http://localhost:19309</td>
+    <td>(인증 없음)</td>
+  </tr>
+  <tr>
+    <td>Loki API</td>
+    <td class="url">http://localhost:19310</td>
+    <td>(인증 없음)</td>
+  </tr>
+  <tr>
+    <td>Traefik Dashboard</td>
+    <td class="url">http://localhost:18082</td>
+    <td>(인증 없음)</td>
+  </tr>
+</table>
+
+<h1>4. API 헬스 / 메트릭 (개발 확인용)</h1>
+
+<table>
+  <tr><th>엔드포인트</th><th>URL</th></tr>
+  <tr><td>backend-core health</td><td class="url">http://localhost:19090/actuator/health</td></tr>
+  <tr><td>backend-core prometheus</td><td class="url">http://localhost:19090/actuator/prometheus</td></tr>
+  <tr><td>backend-bff health</td><td class="url">http://localhost:19091/actuator/health</td></tr>
+  <tr><td>backend-bff prometheus</td><td class="url">http://localhost:19091/actuator/prometheus</td></tr>
+  <tr><td>Keycloak realm</td><td class="url">http://localhost:19281/realms/openplatform-v3</td></tr>
+  <tr><td>MinIO health</td><td class="url">http://localhost:19900/minio/health/live</td></tr>
+</table>
+
+<h1>5. 서버 / 프로토콜 접속 (개발 도구)</h1>
+
+<table>
+  <tr><th>서비스</th><th>연결 정보</th></tr>
+  <tr>
+    <td><strong>PostgreSQL</strong></td>
+    <td><code>localhost:19432</code> &middot; DB <code>platform_v3</code><br>
+    <span class="cred">platform_v3 / platform_v3_pass</span></td>
+  </tr>
+  <tr>
+    <td>Redis</td>
+    <td><code>localhost:19379</code> &middot; password <span class="cred">v3_redis_pass</span></td>
+  </tr>
+  <tr>
+    <td>MongoDB (Rocket.Chat)</td>
+    <td><code>localhost:27017</code> (컨테이너 내부만)</td>
+  </tr>
+  <tr>
+    <td><strong>OpenLDAP</strong></td>
+    <td><code>ldap://localhost:19389</code><br>
+    bind <code>cn=admin,dc=v3,dc=local</code> / <span class="cred">adminpass</span></td>
+  </tr>
+  <tr>
+    <td>Stalwart SMTP</td>
+    <td><code>localhost:19025</code></td>
+  </tr>
+  <tr>
+    <td>Stalwart IMAP</td>
+    <td><code>localhost:19143</code> (STARTTLS 필요, <span class="cred">user1 / user1</span>)</td>
+  </tr>
+  <tr>
+    <td>LiveKit WebRTC</td>
+    <td><code>ws://localhost:19880</code> (BFF 경유 JWT 필요)</td>
+  </tr>
+</table>
+
+<h1>6. Traefik 호스트 라우팅</h1>
+
+<p><code>/etc/hosts</code> 또는 Windows <code>C:\Windows\System32\drivers\etc\hosts</code> 에 다음을 추가:</p>
+
+<pre>127.0.0.1  portal.v3.localhost api.v3.localhost bff.v3.localhost keycloak.v3.localhost minio.v3.localhost chat.v3.localhost wiki.v3.localhost mail.v3.localhost</pre>
+
+<table>
+  <tr><th>호스트</th><th>매핑 대상</th></tr>
+  <tr><td class="url">http://portal.v3.localhost:18081</td><td>포털 UI</td></tr>
+  <tr><td class="url">http://api.v3.localhost:18081</td><td>backend-core</td></tr>
+  <tr><td class="url">http://bff.v3.localhost:18081</td><td>backend-bff</td></tr>
+  <tr><td class="url">http://keycloak.v3.localhost:18081</td><td>Keycloak</td></tr>
+  <tr><td class="url">http://minio.v3.localhost:18081</td><td>MinIO Console</td></tr>
+  <tr><td class="url">http://chat.v3.localhost:18081</td><td>Rocket.Chat</td></tr>
+  <tr><td class="url">http://wiki.v3.localhost:18081</td><td>Wiki.js</td></tr>
+  <tr><td class="url">http://mail.v3.localhost:18081</td><td>Stalwart</td></tr>
+</table>
+
+<h1>7. 기본 사용자 (Keycloak realm openplatform-v3)</h1>
+
+<table>
+  <tr><th>사용자</th><th>비밀번호</th><th>역할</th><th>용도</th></tr>
+  <tr>
+    <td class="cred">user1</td>
+    <td class="cred">user1</td>
+    <td>ROLE_USER, ROLE_APPROVER</td>
+    <td>일반 사용자 테스트</td>
+  </tr>
+  <tr>
+    <td class="cred">admin</td>
+    <td class="cred">admin</td>
+    <td>ROLE_ADMIN, ROLE_USER</td>
+    <td>관리자 테스트</td>
+  </tr>
+</table>
+
+<h1>8. 가장 많이 쓰는 명령</h1>
+
+<pre># 프로젝트 디렉토리
+cd C:/claude/openplatform_v3
+
+# 상태 확인
+./scripts/start.sh status
+
+# 전체 기동 (healthcheck + resources)
+./scripts/start.sh full
+
+# 관측성 포함 (Loki/Grafana/Prometheus)
+./scripts/start.sh observability
+
+# 운영 모드 (전체 override)
+./scripts/start.sh production
+
+# 중지
+./scripts/start.sh stop
+
+# 특정 서비스 로그 tail
+./scripts/start.sh logs v3-backend-core
+
+# Mongo replica set 초기화 (최초 1회)
+./scripts/start.sh init-mongo</pre>
+
+<h1>9. 빠른 체험 경로</h1>
+
+<blockquote>
+<strong>가장 빠른 체험</strong>: 브라우저에서 <code>http://localhost:25174</code> 접속 → <span class="cred">user1 / user1</span> 로 로그인 → 대시보드에서 9개 메뉴(대시보드/전자결재/게시판/캘린더/조직도/메신저/메일/위키/화상회의) 탐색
+</blockquote>
+
+<hr>
+
+<p style="text-align:center; color: #64748b; font-size: 9pt; font-style: italic; margin-top: 30px;">
+openplatform v3 — 접속 정보 가이드<br>
+자동 생성: 2026-04-15 &middot; 9 섹션
+</p>
+
+</body>
+</html>

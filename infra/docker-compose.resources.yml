@@ -1,0 +1,43 @@
+# 리소스 제한 override (Ops-8)
+# 사용: docker compose -f infra/docker-compose.yml -f infra/docker-compose.resources.yml up -d
+
+services:
+  postgres:
+    mem_limit: 1g
+    cpus: 2.0
+  redis:
+    mem_limit: 256m
+    cpus: 1.0
+  minio:
+    mem_limit: 512m
+    cpus: 1.0
+  keycloak:
+    mem_limit: 1536m
+    cpus: 2.0
+  openldap:
+    mem_limit: 256m
+    cpus: 1.0
+  mongo:
+    mem_limit: 768m
+    cpus: 1.5
+  rocketchat:
+    mem_limit: 1536m
+    cpus: 2.0
+  wikijs:
+    mem_limit: 512m
+    cpus: 1.0
+  stalwart:
+    mem_limit: 512m
+    cpus: 1.0
+  livekit:
+    mem_limit: 512m
+    cpus: 1.0
+  backend-core:
+    mem_limit: 1g
+    cpus: 2.0
+  backend-bff:
+    mem_limit: 768m
+    cpus: 1.5
+  ui-frontend:
+    mem_limit: 256m
+    cpus: 1.0

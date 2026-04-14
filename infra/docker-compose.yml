@@ -1,0 +1,299 @@
+name: openplatform-v3
+
+networks:
+  v3-net:
+    name: openplatform-v3-net
+    driver: bridge
+  traefik-net:
+    external: true
+
+volumes:
+  v3-postgres-data:
+  v3-redis-data:
+  v3-minio-data:
+  v3-keycloak-data:
+  v3-mongo-data:
+  v3-wiki-data:
+  v3-stalwart-data:
+  v3-openldap-data:
+  v3-openldap-config:
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: v3-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: platform_v3
+      POSTGRES_USER: platform_v3
+      POSTGRES_PASSWORD: platform_v3_pass
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=C"
+    ports:
+      - "19432:5432"
+    volumes:
+      - v3-postgres-data:/var/lib/postgresql/data
+      - ./init-sql:/docker-entrypoint-initdb.d:ro
+    networks: [v3-net]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U platform_v3 -d platform_v3"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: v3-redis
+    restart: unless-stopped
+    command: ["redis-server", "--requirepass", "v3_redis_pass", "--appendonly", "yes"]
+    ports:
+      - "19379:6379"
+    volumes:
+      - v3-redis-data:/data
+    networks: [v3-net]
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "v3_redis_pass", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  minio:
+    image: minio/minio:RELEASE.2023-11-20T22-40-07Z
+    container_name: v3-minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: v3minio
+      MINIO_ROOT_PASSWORD: v3minio_pass
+      MINIO_BROWSER_REDIRECT_URL: http://localhost:19901
+      MINIO_IDENTITY_OPENID_CONFIG_URL_keycloak: http://keycloak:8080/realms/openplatform-v3/.well-known/openid-configuration
+      MINIO_IDENTITY_OPENID_CLIENT_ID_keycloak: minio
+      MINIO_IDENTITY_OPENID_CLIENT_SECRET_keycloak: acSJl1vvUMgJzzB9L3iT0aSzg6XKEtr6
+      MINIO_IDENTITY_OPENID_CLAIM_NAME_keycloak: policy
+      MINIO_IDENTITY_OPENID_DISPLAY_NAME_keycloak: "Keycloak SSO"
+      MINIO_IDENTITY_OPENID_REDIRECT_URI_keycloak: http://localhost:19901/oauth_callback
+      MINIO_IDENTITY_OPENID_SCOPES_keycloak: "openid,profile,email"
+      MINIO_IDENTITY_OPENID_ROLE_POLICY_keycloak: "consoleAdmin"
+    ports:
+      - "19900:9000"
+      - "19901:9001"
+    volumes:
+      - v3-minio-data:/data
+    networks: [v3-net]
+    healthcheck:
+      test: ["CMD-SHELL", "mc ready local || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:24.0
+    container_name: v3-keycloak
+    restart: unless-stopped
+    command: ["start-dev", "--import-realm"]
+    environment:
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://postgres:5432/platform_v3
+      KC_DB_USERNAME: platform_v3
+      KC_DB_PASSWORD: platform_v3_pass
+      KC_DB_SCHEMA: keycloak_v3
+      KC_HOSTNAME_STRICT: "false"
+      KC_HTTP_ENABLED: "true"
+      # 고정 frontend URL — 토큰 iss 가 항상 localhost:19281 로 발급되어 내/외부 불일치 방지
+      KC_HOSTNAME_URL: "http://localhost:19281"
+      KC_HOSTNAME_ADMIN_URL: "http://localhost:19281"
+      # XA 트랜잭션 복구 활성화 (dev WARN 해소)
+      QUARKUS_TRANSACTION_MANAGER_ENABLE_RECOVERY: "true"
+    ports:
+      - "19281:8080"
+    volumes:
+      - v3-keycloak-data:/opt/keycloak/data
+      - ./keycloak:/opt/keycloak/data/import:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks: [v3-net]
+
+  # Mattermost TE 는 OAuth 가 Enterprise 전용이라 Rocket.Chat 으로 교체.
+  # Rocket.Chat Community Edition 은 OAuth/OIDC 모두 완전 무료.
+  rocketchat:
+    image: registry.rocket.chat/rocketchat/rocket.chat:6.13.0
+    container_name: v3-rocketchat
+    restart: unless-stopped
+    command: bash -c "for i in \`seq 1 30\`; do node main.js && s=$$? && break || s=$$?; echo 'retry' $$i; sleep 5; done; (exit $$s)"
+    environment:
+      ROOT_URL: http://localhost:19065
+      PORT: 3000
+      MONGO_URL: mongodb://mongo:27017/rocketchat?replicaSet=rs0
+      MONGO_OPLOG_URL: mongodb://mongo:27017/local?replicaSet=rs0
+      DEPLOY_METHOD: docker
+      ADMIN_USERNAME: v3admin
+      ADMIN_PASS: Admin1234!
+      ADMIN_EMAIL: v3admin@v3.local
+      OVERWRITE_SETTING_Show_Setup_Wizard: completed
+      OVERWRITE_SETTING_Site_Url: http://localhost:19065
+    ports:
+      - "19065:3000"
+    depends_on:
+      - mongo
+    networks: [v3-net]
+
+  mongo:
+    image: mongo:7.0
+    container_name: v3-mongo
+    restart: unless-stopped
+    command: mongod --oplogSize 128 --replSet rs0 --noauth
+    volumes:
+      - v3-mongo-data:/data/db
+    networks: [v3-net]
+
+  mongo-init:
+    image: mongo:7.0
+    container_name: v3-mongo-init
+    profiles: [init]
+    command: >
+      bash -c "
+        for i in $$(seq 1 10); do
+          mongosh --host mongo --eval \"rs.initiate({_id: 'rs0', members: [{_id: 0, host: 'mongo:27017'}]})\" && break
+          echo 'waiting for mongo' && sleep 3
+        done"
+    depends_on:
+      - mongo
+    networks: [v3-net]
+    restart: "no"
+
+  wikijs:
+    image: ghcr.io/requarks/wiki:2
+    container_name: v3-wikijs
+    restart: unless-stopped
+    environment:
+      DB_TYPE: postgres
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: platform_v3
+      DB_PASS: platform_v3_pass
+      DB_NAME: wiki_v3
+    ports:
+      - "19001:3000"
+    volumes:
+      - v3-wiki-data:/wiki/data
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks: [v3-net]
+
+  openldap:
+    image: osixia/openldap:1.5.0
+    container_name: v3-openldap
+    restart: unless-stopped
+    environment:
+      LDAP_ORGANISATION: "openplatform v3"
+      LDAP_DOMAIN: "v3.local"
+      LDAP_ADMIN_PASSWORD: adminpass
+      LDAP_CONFIG_PASSWORD: configpass
+      LDAP_BASE_DN: "dc=v3,dc=local"
+    ports:
+      - "19389:389"
+    volumes:
+      - v3-openldap-data:/var/lib/ldap
+      - v3-openldap-config:/etc/ldap/slapd.d
+    networks: [v3-net]
+
+  stalwart:
+    image: stalwartlabs/stalwart:latest
+    container_name: v3-stalwart
+    restart: unless-stopped
+    ports:
+      - "19025:25"
+      - "19143:143"
+      - "19480:8080"
+    volumes:
+      - v3-stalwart-data:/opt/stalwart
+    depends_on:
+      - openldap
+    networks: [v3-net]
+
+  livekit:
+    image: livekit/livekit-server:v1.9
+    container_name: v3-livekit
+    restart: unless-stopped
+    command: ["--dev", "--bind", "0.0.0.0"]
+    environment:
+      LIVEKIT_KEYS: "devkey: devsecret_v3_changeme_32chars_minimum"
+    ports:
+      - "19880:7880"
+    networks: [v3-net]
+
+  backend-core:
+    build:
+      context: ../backend-core
+      dockerfile: Dockerfile
+    container_name: v3-backend-core
+    restart: unless-stopped
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: platform_v3
+      DB_USER: platform_v3
+      DB_PASSWORD: platform_v3_pass
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: v3_redis_pass
+      KEYCLOAK_ISSUER_URI: http://keycloak:8080/realms/openplatform-v3
+      MINIO_ENDPOINT: http://minio:9000
+      MINIO_ACCESS_KEY: v3minio
+      MINIO_SECRET_KEY: v3minio_pass
+      MINIO_BUCKET: platform-v3
+      SERVER_PORT: 8080
+    ports:
+      - "19090:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      keycloak:
+        condition: service_started
+    networks: [v3-net]
+
+  backend-bff:
+    build:
+      context: ../backend-bff
+      dockerfile: Dockerfile
+    container_name: v3-backend-bff
+    restart: unless-stopped
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      KEYCLOAK_ISSUER_URI: http://keycloak:8080/realms/openplatform-v3
+      MATTERMOST_URL: http://mattermost:8065
+      STALWART_URL: http://stalwart:8080
+      WIKIJS_URL: http://wikijs:3000
+      LIVEKIT_URL: http://livekit:7880
+      LIVEKIT_API_KEY: devkey
+      LIVEKIT_API_SECRET: devsecret_v3_changeme_32chars_minimum
+      MINIO_ENDPOINT: http://minio:9000
+      MINIO_ACCESS_KEY: v3minio
+      MINIO_SECRET_KEY: v3minio_pass
+      SERVER_PORT: 8080
+    ports:
+      - "19091:8080"
+    depends_on:
+      keycloak:
+        condition: service_started
+    networks: [v3-net]
+
+  ui-frontend:
+    build:
+      context: ../ui
+      dockerfile: Dockerfile
+    container_name: v3-ui-frontend
+    restart: unless-stopped
+    ports:
+      - "19173:80"
+    depends_on:
+      - backend-core
+      - backend-bff
+    networks: [v3-net]

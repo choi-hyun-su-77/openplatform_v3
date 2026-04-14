@@ -1,0 +1,34 @@
+# =============================================================================
+# Grafana 데이터소스 프로비저닝
+# - Loki       (http://loki:3100)
+# - Prometheus (http://prometheus:9090)
+# =============================================================================
+
+apiVersion: 1
+
+datasources:
+  # ---------------------------------------------------------------------------
+  # Loki — 로그
+  # ---------------------------------------------------------------------------
+  - name: Loki
+    type: loki
+    access: proxy
+    url: http://loki:3100
+    isDefault: false
+    editable: true
+    jsonData:
+      maxLines: 1000
+      timeout: 60
+
+  # ---------------------------------------------------------------------------
+  # Prometheus — 메트릭 (기본 데이터소스)
+  # ---------------------------------------------------------------------------
+  - name: Prometheus
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+    editable: true
+    jsonData:
+      timeInterval: 15s
+      httpMethod: POST

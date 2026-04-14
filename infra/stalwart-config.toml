@@ -1,0 +1,27 @@
+[directory."ldap-keycloak"]
+type = "ldap"
+url = "ldap://openldap:389"
+base-dn = "dc=v3,dc=local"
+timeout = "30s"
+
+[directory."ldap-keycloak".bind]
+dn = "cn=admin,dc=v3,dc=local"
+secret = "adminpass"
+
+[directory."ldap-keycloak".bind.auth]
+enable = true
+dn = "uid=?,ou=users,dc=v3,dc=local"
+
+[directory."ldap-keycloak".filter]
+name = "(&(objectClass=inetOrgPerson)(uid=?))"
+email = "(&(objectClass=inetOrgPerson)(|(mail=?)(mailAlternateAddress=?)))"
+
+[directory."ldap-keycloak".attributes]
+name = "uid"
+class = "inetOrgPerson"
+description = "cn"
+secret = "userPassword"
+groups = ["memberOf"]
+email = "mail"
+email-alias = "mailAlternateAddress"
+quota = "diskQuota"

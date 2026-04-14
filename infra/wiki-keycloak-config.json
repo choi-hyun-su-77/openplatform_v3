@@ -1,0 +1,36 @@
+{
+  "strategies": [
+    {
+      "key": "local",
+      "strategyKey": "local",
+      "config": [],
+      "displayName": "Local",
+      "order": 1,
+      "isEnabled": true,
+      "selfRegistration": false,
+      "domainWhitelist": [],
+      "autoEnrollGroups": []
+    },
+    {
+      "key": "keycloak",
+      "strategyKey": "keycloak",
+      "displayName": "Keycloak SSO",
+      "order": 0,
+      "isEnabled": true,
+      "selfRegistration": true,
+      "domainWhitelist": [],
+      "autoEnrollGroups": [],
+      "config": [
+        { "key": "host",         "value": "{\"v\":\"http://keycloak:8080\"}" },
+        { "key": "realm",        "value": "{\"v\":\"openplatform-v3\"}" },
+        { "key": "clientId",     "value": "{\"v\":\"wiki-js\"}" },
+        { "key": "clientSecret", "value": "{\"v\":\"C45Mb5Fu6kVGwyk9i8cpxrAFi1lm6Nbm\"}" },
+        { "key": "authorizationURL","value": "{\"v\":\"http://localhost:19281/realms/openplatform-v3/protocol/openid-connect/auth\"}" },
+        { "key": "tokenURL",     "value": "{\"v\":\"http://keycloak:8080/realms/openplatform-v3/protocol/openid-connect/token\"}" },
+        { "key": "userInfoURL",  "value": "{\"v\":\"http://keycloak:8080/realms/openplatform-v3/protocol/openid-connect/userinfo\"}" },
+        { "key": "logoutUpstream","value": "{\"v\":false}" },
+        { "key": "logoutURL",    "value": "{\"v\":\"http://localhost:19281/realms/openplatform-v3/protocol/openid-connect/logout\"}" }
+      ]
+    }
+  ]
+}

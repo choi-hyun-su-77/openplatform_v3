@@ -1,0 +1,82 @@
+http:
+  routers:
+    portal:
+      rule: "Host(`portal.v3.localhost`)"
+      entryPoints: [web]
+      service: portal-svc
+
+    api-core:
+      rule: "Host(`api.v3.localhost`)"
+      entryPoints: [web]
+      service: api-core-svc
+
+    api-bff:
+      rule: "Host(`bff.v3.localhost`)"
+      entryPoints: [web]
+      service: api-bff-svc
+
+    keycloak:
+      rule: "Host(`keycloak.v3.localhost`)"
+      entryPoints: [web]
+      service: keycloak-svc
+
+    minio:
+      rule: "Host(`minio.v3.localhost`)"
+      entryPoints: [web]
+      service: minio-svc
+
+    rocketchat:
+      rule: "Host(`chat.v3.localhost`)"
+      entryPoints: [web]
+      service: rocketchat-svc
+
+    wikijs:
+      rule: "Host(`wiki.v3.localhost`)"
+      entryPoints: [web]
+      service: wikijs-svc
+
+    stalwart:
+      rule: "Host(`mail.v3.localhost`)"
+      entryPoints: [web]
+      service: stalwart-svc
+
+  services:
+    portal-svc:
+      loadBalancer:
+        servers:
+          - url: "http://host.docker.internal:25174"
+
+    api-core-svc:
+      loadBalancer:
+        servers:
+          - url: "http://host.docker.internal:19090"
+
+    api-bff-svc:
+      loadBalancer:
+        servers:
+          - url: "http://host.docker.internal:19091"
+
+    keycloak-svc:
+      loadBalancer:
+        servers:
+          - url: "http://host.docker.internal:19281"
+
+    minio-svc:
+      loadBalancer:
+        servers:
+          - url: "http://host.docker.internal:19901"
+
+    rocketchat-svc:
+      loadBalancer:
+        servers:
+          - url: "http://host.docker.internal:19065"
+
+    wikijs-svc:
+      loadBalancer:
+        servers:
+          - url: "http://host.docker.internal:19001"
+
+    stalwart-svc:
+      loadBalancer:
+        servers:
+          - url: "http://host.docker.internal:19480"

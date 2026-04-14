@@ -1,0 +1,291 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  병렬 합의 포함 결재 프로세스 (Parallel Agreement Approval Process) — v3 포팅본
+  ================================================================
+  용도: 기안 → 병렬 합의(법무팀, 재무팀 동시 진행) → 최종 결재.
+  ParallelGateway를 사용하여 합의를 동시에 진행하고, 전원 완료 후 최종 결재로 이동.
+  Flowable 7.x 호환. v1(openplatform/bpmn)에서 포팅.
+-->
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
+             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+             xmlns:flowable="http://flowable.org/bpmn"
+             xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+             xmlns:omgdc="http://www.omg.org/spec/DD/20100524/DC"
+             xmlns:omgdi="http://www.omg.org/spec/DD/20100524/DI"
+             targetNamespace="http://openplatform-v3.example.com/approval"
+             typeLanguage="http://www.w3.org/2001/XMLSchema"
+             expressionLanguage="http://www.w3.org/1999/XPath">
+
+  <process id="parallelAgreement" name="병렬 합의 결재 프로세스" isExecutable="true">
+
+    <documentation>병렬 합의: 법무팀/재무팀 동시 합의 후 최종결재</documentation>
+
+    <!-- ==================== 시작 ==================== -->
+    <startEvent id="startEvent" name="결재 시작" />
+
+    <!-- ==================== 기안 ==================== -->
+    <userTask id="draftTask" name="기안"
+              flowable:assignee="${initiator}"
+              flowable:formKey="form-draft">
+      <extensionElements>
+        <flowable:taskListener event="create"
+            delegateExpression="${approvalNotificationListener}" />
+        <flowable:formProperty id="comment" name="의견" type="string" required="false" />
+        <flowable:formProperty id="action" name="결재액션" type="enum" required="true">
+          <flowable:value id="APPROVE" name="승인" />
+          <flowable:value id="REJECT" name="반려" />
+        </flowable:formProperty>
+      </extensionElements>
+    </userTask>
+
+    <!-- ==================== 병렬 분기 (Fork) ==================== -->
+    <parallelGateway id="parallelFork" name="합의 병렬 분기" />
+
+    <!-- ==================== 합의 1: 법무팀 ==================== -->
+    <userTask id="agreementLegal" name="합의: 법무팀"
+              flowable:assignee="${legalApprover}"
+              flowable:candidateGroups="LEGAL"
+              flowable:formKey="form-agreement">
+      <extensionElements>
+        <flowable:taskListener event="create"
+            delegateExpression="${approvalNotificationListener}" />
+        <flowable:taskListener event="complete"
+            delegateExpression="${agreementResultListener}" />
+        <flowable:formProperty id="comment" name="의견" type="string" required="false" />
+        <flowable:formProperty id="agreementAction" name="합의액션" type="enum" required="true">
+          <flowable:value id="AGREE" name="합의" />
+          <flowable:value id="DISAGREE" name="부동의" />
+        </flowable:formProperty>
+      </extensionElements>
+    </userTask>
+
+    <!-- ==================== 합의 2: 재무팀 ==================== -->
+    <userTask id="agreementFinance" name="합의: 재무팀"
+              flowable:assignee="${financeApprover}"
+              flowable:candidateGroups="FINANCE"
+              flowable:formKey="form-agreement">
+      <extensionElements>
+        <flowable:taskListener event="create"
+            delegateExpression="${approvalNotificationListener}" />
+        <flowable:taskListener event="complete"
+            delegateExpression="${agreementResultListener}" />
+        <flowable:formProperty id="comment" name="의견" type="string" required="false" />
+        <flowable:formProperty id="agreementAction" name="합의액션" type="enum" required="true">
+          <flowable:value id="AGREE" name="합의" />
+          <flowable:value id="DISAGREE" name="부동의" />
+        </flowable:formProperty>
+      </extensionElements>
+    </userTask>
+
+    <!--
+      ========== Multi-Instance 대안 (주석) ==========
+      아래는 ParallelGateway 대신 Multi-Instance UserTask를 사용하는 대안이다.
+      합의 대상자 목록을 동적으로 결정할 때 유용하다.
+
+      <userTask id="agreementMulti" name="합의 (Multi-Instance)"
+                flowable:assignee="${agreementApprover}"
+                flowable:formKey="form-agreement">
+        <multiInstanceLoopCharacteristics isSequential="false"
+            flowable:collection="${agreementApproverList}"
+            flowable:elementVariable="agreementApprover">
+          <completionCondition>${nrOfCompletedInstances == nrOfInstances}</completionCondition>
+        </multiInstanceLoopCharacteristics>
+        <extensionElements>
+          <flowable:taskListener event="complete"
+              delegateExpression="${agreementResultListener}" />
+          <flowable:formProperty id="agreementAction" name="합의액션" type="enum" required="true">
+            <flowable:value id="AGREE" name="합의" />
+            <flowable:value id="DISAGREE" name="부동의" />
+          </flowable:formProperty>
+        </extensionElements>
+      </userTask>
+    -->
+
+    <!-- ==================== 병렬 합류 (Join) ==================== -->
+    <parallelGateway id="parallelJoin" name="합의 병렬 합류" />
+
+    <!-- ==================== 전원 승인 여부 분기 ==================== -->
+    <exclusiveGateway id="allAgreedGateway" name="전원 합의 여부" />
+
+    <!-- ==================== 최종 결재 ==================== -->
+    <userTask id="finalApprovalTask" name="최종 결재"
+              flowable:assignee="${finalApprover}"
+              flowable:formKey="form-approval">
+      <extensionElements>
+        <flowable:taskListener event="create"
+            delegateExpression="${approvalNotificationListener}" />
+        <flowable:taskListener event="complete"
+            delegateExpression="${approvalHistoryListener}" />
+        <flowable:formProperty id="comment" name="의견" type="string" required="false" />
+        <flowable:formProperty id="action" name="결재액션" type="enum" required="true">
+          <flowable:value id="APPROVE" name="승인" />
+          <flowable:value id="REJECT" name="반려" />
+        </flowable:formProperty>
+      </extensionElements>
+    </userTask>
+
+    <!-- ==================== 결재 완료 ==================== -->
+    <serviceTask id="approvalCompleteTask" name="결재 완료 처리"
+                 flowable:delegateExpression="${approvalCompleteDelegate}" />
+
+    <!-- ==================== 반려 처리 ==================== -->
+    <serviceTask id="rejectionTask" name="반려 처리"
+                 flowable:delegateExpression="${rejectionDelegate}" />
+
+    <!-- ==================== 종료 ==================== -->
+    <endEvent id="endApproved" name="결재 완료" />
+    <endEvent id="endRejected" name="반려 종료" />
+
+    <!-- ==================== 시퀀스 플로우 ==================== -->
+    <sequenceFlow id="flow_start_draft" sourceRef="startEvent" targetRef="draftTask" />
+    <sequenceFlow id="flow_draft_fork" sourceRef="draftTask" targetRef="parallelFork" />
+
+    <!-- Fork → 병렬 합의 -->
+    <sequenceFlow id="flow_fork_legal" sourceRef="parallelFork" targetRef="agreementLegal" />
+    <sequenceFlow id="flow_fork_finance" sourceRef="parallelFork" targetRef="agreementFinance" />
+
+    <!-- 합의 완료 → Join -->
+    <sequenceFlow id="flow_legal_join" sourceRef="agreementLegal" targetRef="parallelJoin" />
+    <sequenceFlow id="flow_finance_join" sourceRef="agreementFinance" targetRef="parallelJoin" />
+
+    <!-- Join → 전원 합의 확인 -->
+    <sequenceFlow id="flow_join_check" sourceRef="parallelJoin" targetRef="allAgreedGateway" />
+
+    <!-- 전원 합의 → 최종 결재 -->
+    <sequenceFlow id="flow_allAgreed_final" name="전원 합의" sourceRef="allAgreedGateway" targetRef="finalApprovalTask">
+      <conditionExpression xsi:type="tFormalExpression">${allAgreed == true}</conditionExpression>
+    </sequenceFlow>
+
+    <!-- 부동의 있음 → 반려 -->
+    <sequenceFlow id="flow_disagreed_reject" name="부동의 존재" sourceRef="allAgreedGateway" targetRef="rejectionTask">
+      <conditionExpression xsi:type="tFormalExpression">${allAgreed == false}</conditionExpression>
+    </sequenceFlow>
+
+    <sequenceFlow id="flow_final_complete" sourceRef="finalApprovalTask" targetRef="approvalCompleteTask" />
+    <sequenceFlow id="flow_complete_end" sourceRef="approvalCompleteTask" targetRef="endApproved" />
+    <sequenceFlow id="flow_reject_end" sourceRef="rejectionTask" targetRef="endRejected" />
+
+  </process>
+
+  <!-- ==================== BPMN Diagram ==================== -->
+  <bpmndi:BPMNDiagram id="BPMNDiagram_parallelAgreement">
+    <bpmndi:BPMNPlane bpmnElement="parallelAgreement" id="BPMNPlane_parallelAgreement">
+
+      <bpmndi:BPMNShape id="shape_startEvent" bpmnElement="startEvent">
+        <omgdc:Bounds x="100" y="250" width="36" height="36" />
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="shape_draftTask" bpmnElement="draftTask">
+        <omgdc:Bounds x="200" y="228" width="120" height="80" />
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="shape_parallelFork" bpmnElement="parallelFork">
+        <omgdc:Bounds x="380" y="248" width="40" height="40" />
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="shape_agreementLegal" bpmnElement="agreementLegal">
+        <omgdc:Bounds x="480" y="148" width="140" height="80" />
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="shape_agreementFinance" bpmnElement="agreementFinance">
+        <omgdc:Bounds x="480" y="308" width="140" height="80" />
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="shape_parallelJoin" bpmnElement="parallelJoin">
+        <omgdc:Bounds x="680" y="248" width="40" height="40" />
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="shape_allAgreedGateway" bpmnElement="allAgreedGateway" isMarkerVisible="true">
+        <omgdc:Bounds x="780" y="248" width="40" height="40" />
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="shape_finalApprovalTask" bpmnElement="finalApprovalTask">
+        <omgdc:Bounds x="880" y="228" width="120" height="80" />
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="shape_approvalCompleteTask" bpmnElement="approvalCompleteTask">
+        <omgdc:Bounds x="1060" y="228" width="140" height="80" />
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="shape_endApproved" bpmnElement="endApproved">
+        <omgdc:Bounds x="1260" y="250" width="36" height="36" />
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="shape_rejectionTask" bpmnElement="rejectionTask">
+        <omgdc:Bounds x="880" y="380" width="120" height="80" />
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="shape_endRejected" bpmnElement="endRejected">
+        <omgdc:Bounds x="1060" y="402" width="36" height="36" />
+      </bpmndi:BPMNShape>
+
+      <!-- Edges -->
+      <bpmndi:BPMNEdge id="edge_flow_start_draft" bpmnElement="flow_start_draft">
+        <omgdi:waypoint x="136" y="268" />
+        <omgdi:waypoint x="200" y="268" />
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="edge_flow_draft_fork" bpmnElement="flow_draft_fork">
+        <omgdi:waypoint x="320" y="268" />
+        <omgdi:waypoint x="380" y="268" />
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="edge_flow_fork_legal" bpmnElement="flow_fork_legal">
+        <omgdi:waypoint x="400" y="248" />
+        <omgdi:waypoint x="400" y="188" />
+        <omgdi:waypoint x="480" y="188" />
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="edge_flow_fork_finance" bpmnElement="flow_fork_finance">
+        <omgdi:waypoint x="400" y="288" />
+        <omgdi:waypoint x="400" y="348" />
+        <omgdi:waypoint x="480" y="348" />
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="edge_flow_legal_join" bpmnElement="flow_legal_join">
+        <omgdi:waypoint x="620" y="188" />
+        <omgdi:waypoint x="700" y="188" />
+        <omgdi:waypoint x="700" y="248" />
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="edge_flow_finance_join" bpmnElement="flow_finance_join">
+        <omgdi:waypoint x="620" y="348" />
+        <omgdi:waypoint x="700" y="348" />
+        <omgdi:waypoint x="700" y="288" />
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="edge_flow_join_check" bpmnElement="flow_join_check">
+        <omgdi:waypoint x="720" y="268" />
+        <omgdi:waypoint x="780" y="268" />
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="edge_flow_allAgreed_final" bpmnElement="flow_allAgreed_final">
+        <omgdi:waypoint x="820" y="268" />
+        <omgdi:waypoint x="880" y="268" />
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="edge_flow_disagreed_reject" bpmnElement="flow_disagreed_reject">
+        <omgdi:waypoint x="800" y="288" />
+        <omgdi:waypoint x="800" y="420" />
+        <omgdi:waypoint x="880" y="420" />
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="edge_flow_final_complete" bpmnElement="flow_final_complete">
+        <omgdi:waypoint x="1000" y="268" />
+        <omgdi:waypoint x="1060" y="268" />
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="edge_flow_complete_end" bpmnElement="flow_complete_end">
+        <omgdi:waypoint x="1200" y="268" />
+        <omgdi:waypoint x="1260" y="268" />
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="edge_flow_reject_end" bpmnElement="flow_reject_end">
+        <omgdi:waypoint x="1000" y="420" />
+        <omgdi:waypoint x="1060" y="420" />
+      </bpmndi:BPMNEdge>
+
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+
+</definitions>

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.platform.v3.core.code.mapper.CodeMapper">
+    <select id="selectCodesByGroups" resultType="map">
+        SELECT group_cd, code, code_name, sort_order, use_yn
+        FROM platform_v3.cm_code
+        WHERE use_yn = 'Y'
+          AND group_cd IN
+          <foreach collection="groups" item="g" open="(" close=")" separator=",">#{g}</foreach>
+        ORDER BY group_cd, sort_order, code
+    </select>
+</mapper>

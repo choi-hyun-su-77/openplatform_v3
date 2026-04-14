@@ -1,0 +1,143 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.platform.v3.core.approval.mapper.ApprovalMapper">
+
+    <select id="selectInbox" resultType="map">
+        SELECT d.doc_id, d.doc_title, d.form_code, d.drafter_no, d.drafter_name,
+               d.drafter_dept, d.status, d.created_at, d.updated_at
+        FROM platform_v3.ap_document d
+        WHERE 1=1
+        <choose>
+            <when test="boxType == 'DRAFT'">
+                AND d.status = 'DRAFT' AND d.drafter_no = #{userNo}
+            </when>
+            <when test="boxType == 'MY_DOCS'">
+                AND d.drafter_no = #{userNo}
+            </when>
+            <when test="boxType == 'PENDING'">
+                AND d.status = 'PENDING'
+                AND EXISTS (
+                    SELECT 1 FROM platform_v3.ap_approval_line l
+                    WHERE l.doc_id = d.doc_id AND l.approver_no = #{userNo}
+                      AND l.status = 'PENDING'
+                )
+            </when>
+            <when test="boxType == 'IN_PROGRESS'">
+                AND d.status = 'IN_PROGRESS'
+                AND (d.drafter_no = #{userNo} OR EXISTS (
+                    SELECT 1 FROM platform_v3.ap_approval_line l
+                    WHERE l.doc_id = d.doc_id AND l.approver_no = #{userNo}
+                ))
+            </when>
+            <when test="boxType == 'COMPLETED'">
+                AND d.status = 'APPROVED'
+                AND (d.drafter_no = #{userNo} OR EXISTS (
+                    SELECT 1 FROM platform_v3.ap_approval_line l
+                    WHERE l.doc_id = d.doc_id AND l.approver_no = #{userNo}
+                ))
+            </when>
+            <when test="boxType == 'REJECTED'">
+                AND d.status = 'REJECTED'
+                AND (d.drafter_no = #{userNo} OR EXISTS (
+                    SELECT 1 FROM platform_v3.ap_approval_line l
+                    WHERE l.doc_id = d.doc_id AND l.approver_no = #{userNo}
+                ))
+            </when>
+            <when test="boxType == 'RECEIVED'">
+                AND EXISTS (
+                    SELECT 1 FROM platform_v3.ap_approval_line l
+                    WHERE l.doc_id = d.doc_id AND l.approver_no = #{userNo}
+                )
+            </when>
+            <when test="boxType == 'CC_BOX'">
+                AND FALSE
+            </when>
+            <when test="boxType == 'DEPT_BOX'">
+                AND d.drafter_dept IS NOT NULL
+            </when>
+            <otherwise>
+                AND TRUE
+            </otherwise>
+        </choose>
+        <if test="keyword != null and keyword != ''">
+            AND (d.doc_title LIKE '%' || #{keyword} || '%' OR d.drafter_name LIKE '%' || #{keyword} || '%')
+        </if>
+        ORDER BY d.created_at DESC
+        LIMIT 200
+    </select>
+
+    <select id="selectDetail" resultType="map">
+        SELECT doc_id, doc_title, form_code, drafter_no, drafter_name,
+               drafter_dept, status, content, created_at, updated_at
+        FROM platform_v3.ap_document
+        WHERE doc_id = #{docId}
+    </select>
+
+    <select id="selectApprovalLine" resultType="map">
+        SELECT line_id, doc_id, step_order, approver_no, approver_name,
+               role, status, comment, acted_at
+        FROM platform_v3.ap_approval_line
+        WHERE doc_id = #{docId}
+        ORDER BY step_order
+    </select>
+
+    <select id="selectFormTemplates" resultType="map">
+        SELECT code AS form_code, code_name AS form_name, sort_order
+        FROM platform_v3.cm_code
+        WHERE group_cd = 'FORM_CODE' AND use_yn = 'Y'
+        ORDER BY sort_order
+    </select>
+
+    <insert id="insertDocument" parameterType="map" useGeneratedKeys="true" keyProperty="docId" keyColumn="doc_id">
+        INSERT INTO platform_v3.ap_document
+            (doc_title, form_code, drafter_no, drafter_name, drafter_dept, status, content, created_at, updated_at)
+        VALUES
+            (#{docTitle}, #{formCode}, #{drafterNo}, #{drafterName},
+             #{drafterDept}, #{status}, #{content}, NOW(), NOW())
+    </insert>
+
+    <update id="updateDocumentStatus">
+        UPDATE platform_v3.ap_document
+        SET status = #{status}, updated_at = NOW()
+        WHERE doc_id = #{docId}
+    </update>
+
+    <insert id="insertApprovalLine" parameterType="map" useGeneratedKeys="true" keyProperty="lineId" keyColumn="line_id">
+        INSERT INTO platform_v3.ap_approval_line
+            (doc_id, step_order, approver_no, approver_name, role, status)
+        VALUES
+            (#{docId}, #{stepOrder}, #{approverNo}, #{approverName}, #{role}, COALESCE(#{status}, 'PENDING'))
+    </insert>
+
+    <update id="updateApprovalLineStatus">
+        UPDATE platform_v3.ap_approval_line
+        SET status = #{status},
+            comment = #{comment},
+            acted_at = NOW()
+        WHERE line_id = #{lineId}
+    </update>
+
+    <select id="countPendingForUser" resultType="int">
+        SELECT COUNT(DISTINCT d.doc_id)
+        FROM platform_v3.ap_document d
+        INNER JOIN platform_v3.ap_approval_line l ON l.doc_id = d.doc_id
+        WHERE d.status = 'PENDING' AND l.approver_no = #{userNo} AND l.status = 'PENDING'
+    </select>
+
+    <select id="selectApproversForDocFromDmn" resultType="map">
+        SELECT e.employee_no AS approver_no, e.employee_name AS approver_name,
+               p.position_name, p.position_level
+        FROM platform_v3.org_employee e
+        INNER JOIN platform_v3.org_position p ON e.position_id = p.position_id
+        WHERE e.status = 'ACTIVE'
+          AND p.position_level &lt;=
+              <choose>
+                  <when test="amount != null and amount &gt;= 10000000">1</when>
+                  <when test="amount != null and amount &gt;= 1000000">2</when>
+                  <otherwise>3</otherwise>
+              </choose>
+        ORDER BY p.position_level
+        LIMIT 3
+    </select>
+</mapper>

@@ -1,0 +1,4 @@
+# 루트 compose 는 infra/docker-compose.yml 의 얇은 래퍼.
+# 사용자가 `cd openplatform_v3 && docker compose up` 으로 기동 가능하도록 include.
+include:
+  - infra/docker-compose.yml

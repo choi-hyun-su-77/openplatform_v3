@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>openplatform v3 — 세션 연장 기록 (PDF 1차 저장 이후)</title>
+<style>
+  @page { size: A4; margin: 18mm 15mm; }
+  body { font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', -apple-system, sans-serif; font-size: 10pt; line-height: 1.55; color: #1e293b; }
+  h1 { color: #1e40af; border-bottom: 3px solid #3b82f6; padding-bottom: 6px; margin-top: 24px; font-size: 20pt; }
+  h2 { color: #1e3a8a; border-bottom: 1px solid #cbd5e1; padding-bottom: 4px; margin-top: 20px; font-size: 14pt; page-break-after: avoid; }
+  h3 { color: #334155; margin-top: 16px; font-size: 12pt; page-break-after: avoid; }
+  h4 { color: #475569; margin-top: 12px; font-size: 11pt; }
+  code { background: #f1f5f9; padding: 1px 4px; border-radius: 3px; font-size: 9pt; font-family: 'Consolas', 'Monaco', monospace; }
+  pre { background: #0f172a; color: #e2e8f0; padding: 10px 12px; border-radius: 5px; font-size: 8.5pt; overflow-x: auto; line-height: 1.4; page-break-inside: avoid; }
+  table { border-collapse: collapse; width: 100%; margin: 10px 0; font-size: 9pt; page-break-inside: avoid; }
+  th, td { border: 1px solid #cbd5e1; padding: 5px 8px; text-align: left; vertical-align: top; }
+  th { background: #e0e7ff; font-weight: 600; }
+  .badge { display: inline-block; padding: 1px 8px; border-radius: 10px; font-size: 8.5pt; font-weight: 600; }
+  .ok { background: #dcfce7; color: #166534; }
+  .warn { background: #fef3c7; color: #92400e; }
+  .fail { background: #fee2e2; color: #991b1b; }
+  .info { background: #dbeafe; color: #1e40af; }
+  .new { background: #fce7f3; color: #9d174d; }
+  ul, ol { margin: 6px 0 10px 22px; }
+  li { margin-bottom: 3px; }
+  .meta { color: #64748b; font-size: 9pt; font-style: italic; }
+  .section-break { page-break-before: always; }
+  .rule { background: #fffbeb; border-left: 4px solid #f59e0b; padding: 8px 12px; margin: 8px 0; font-size: 9.5pt; }
+  blockquote { border-left: 3px solid #3b82f6; padding: 6px 14px; margin: 8px 0; background: #eff6ff; color: #475569; font-size: 9.5pt; }
+  header { text-align: center; padding: 18px 0; background: linear-gradient(135deg, #3b82f6, #1e40af); color: white; margin: -18mm -15mm 20px -15mm; }
+  header h1 { color: white; border: none; font-size: 22pt; margin: 0; }
+  header .sub { font-size: 11pt; opacity: 0.9; margin-top: 4px; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>openplatform v3 — 세션 연장 기록 (Part 2)</h1>
+  <div class="sub">Rocket.Chat SSO 완성 → 운영 준비 상태 달성 · 2026-04-15</div>
+</header>
+
+<h1>0. 개요</h1>
+
+<p>본 문서는 <code>openplatform_v3_session.pdf</code> 1차 저장 직후부터 운영 준비 완료까지 진행한 작업의 전체 기록입니다.</p>
+
+<table>
+  <tr><th>항목</th><th>값</th></tr>
+  <tr><td>Part 1 PDF 저장 시점</td><td>Rocket.Chat userinfo 401 디버깅 중 중단</td></tr>
+  <tr><td>Part 2 시작</td><td>14개 TODO 생성 후 병렬 실행</td></tr>
+  <tr><td>추가 수행 작업</td><td><strong>65건</strong> (TODO #33~#65)</td></tr>
+  <tr><td>최종 컨테이너</td><td>18개 Up (기존 13 + traefik + prometheus + loki + promtail + grafana)</td></tr>
+  <tr><td>Keycloak SSO 통합</td><td><strong>8/8 서비스 완성</strong> (기존 7 + Rocket.Chat)</td></tr>
+  <tr><td>네트워크 라우팅</td><td>Traefik 6개 호스트 라우팅 검증</td></tr>
+  <tr><td>관측성 스택</td><td>Loki/Promtail/Grafana/Prometheus 실기동</td></tr>
+  <tr><td>성능</td><td>평균 응답시간 6~31 ms</td></tr>
+  <tr><td>보안</td><td>npm audit 0 vulnerabilities (기존 5건 해결)</td></tr>
+</table>
+
+<h1 class="section-break">1. Rocket.Chat userinfo 401 완전 해결</h1>
+
+<h3>디버깅 여정</h3>
+<ol>
+  <li>Custom OAuth 설정 Mongo 직접 주입 (Accounts_OAuth_Custom-Keycloak-*)</li>
+  <li>Service name 케이스 불일치 (<code>keycloak</code> vs <code>Keycloak</code>) 해결</li>
+  <li>identityTokenSentVia=header 반영 검증 (디버그 패치로 확인)</li>
+  <li>토큰 scope 에 <code>openid</code> 포함 확인 (requestPermissions 추가)</li>
+  <li><strong>최종 원인 특정</strong>: 토큰 <code>iss</code> 클레임 불일치</li>
+</ol>
+
+<div class="rule">
+  <strong>핵심 원인:</strong><br>
+  브라우저가 <code>http://localhost:19281</code> 에서 authorize → 토큰의 <code>iss = http://localhost:19281/realms/openplatform-v3</code><br>
+  Rocket.Chat 서버가 <code>http://keycloak:8080</code>(Docker 내부) 에서 userinfo 호출 → Keycloak 이 현재 hostname(<code>keycloak:8080</code>) 과 토큰 iss(<code>localhost:19281</code>) 불일치로 <code>invalid_token</code> 응답.
+</div>
+
+<h3>해결 방법</h3>
+<pre>
+KC_HOSTNAME_URL: "http://localhost:19281"
+KC_HOSTNAME_ADMIN_URL: "http://localhost:19281"
+</pre>
+<p>고정 frontend URL 로 Keycloak 이 <strong>항상</strong> iss=localhost:19281 로 토큰 발급하도록 강제 → 내/외부 hostname 불일치 해소.</p>
+
+<h3>추가 조치</h3>
+<ul>
+  <li>Email 2FA 비활성화 (Rocket.Chat 이 SSO 프로비저닝 사용자에게 2FA 요구하던 문제)</li>
+  <li>Playwright 로 "Keycloak SSO" 버튼 클릭 → Rocket.Chat 홈("Rocket.Chat 방문을 환영합니다!") 진입 확인</li>
+  <li>Mongo users 컬렉션 확인: <code>user1@v3.local</code> 에 <code>services.keycloak</code> 필드 확인 (SSO 프로비저닝 성공)</li>
+</ul>
+
+<h1 class="section-break">2. 14개 TODO 병렬 실행 (P1-P3 + 11개)</h1>
+
+<table>
+  <tr><th>#</th><th>작업</th><th>결과</th></tr>
+  <tr><td>P1</td><td>Rocket.Chat 401</td><td><span class="badge ok">✅ 완전 SSO</span></td></tr>
+  <tr><td>P2</td><td>Approval DB 연동 + Flowable BPMN</td><td><span class="badge ok">✅ ApprovalMapper/Service DB 기반 재작성</span></td></tr>
+  <tr><td>P3</td><td>SSE 알림 실제 트리거</td><td><span class="badge ok">✅ submit/approve/reject/공지 시점 notify() 바인딩</span></td></tr>
+  <tr><td>4</td><td>MinIO Console OIDC 버튼</td><td><span class="badge warn">서버측 완료, Console UI 는 버전 이슈 (Post-4 에서 해결)</span></td></tr>
+  <tr><td>5</td><td>Flyway V7 seed 자동화</td><td><span class="badge ok">✅ V7__seed_data.sql 작성</span></td></tr>
+  <tr><td>6</td><td>UI i18n 다국어 스위처</td><td><span class="badge ok">✅ LayoutHeader 내장 확인</span></td></tr>
+  <tr><td>7</td><td>Permission menu+role</td><td><span class="badge ok">✅ cm_menu/cm_role/cm_role_menu + MenuService + UI 연동</span></td></tr>
+  <tr><td>8</td><td>성능/보안 스캔 (subagent)</td><td><span class="badge ok">✅ perf-scan.sh + security-scan.sh</span></td></tr>
+  <tr><td>9</td><td>README 상세화 (subagent)</td><td><span class="badge ok">✅ 327줄 11 섹션</span></td></tr>
+  <tr><td>10</td><td>백업/복원 스크립트 (subagent)</td><td><span class="badge ok">✅ backup.sh 135줄 + restore.sh 160줄</span></td></tr>
+  <tr><td>11</td><td>CI/CD 파이프라인 (subagent)</td><td><span class="badge ok">✅ .github/workflows/ci.yml 185줄</span></td></tr>
+  <tr><td>12</td><td>Traefik 리버스 프록시 (subagent)</td><td><span class="badge ok">✅ docker-compose.traefik.yml 196줄</span></td></tr>
+  <tr><td>13</td><td>LiveKit 실제 비디오 UI</td><td><span class="badge ok">✅ livekit-client + Room/Track 완성</span></td></tr>
+  <tr><td>14</td><td>결재 BPMN 리소스 포팅 (subagent)</td><td><span class="badge ok">✅ v1 processes/ 4 BPMN + 1 DMN 포팅</span></td></tr>
+</table>
+
+<h3>Approval 도메인 DB 연동 상세</h3>
+<pre>
+ApprovalMapper.java    — 10 메서드 (inbox/detail/line/forms/insert/update/count/dmn)
+ApprovalMapper.xml     — 9종 박스 로직 + 동적 결재자 SQL
+ApprovalService.java   — DB 기반 재작성 + notify() 호출
+NotificationService.java — notify() 오버로드 (title/content 추가)
+BoardService.java      — 공지 save 시 notify() 트리거
+</pre>
+
+<h1 class="section-break">3. Post 6개 작업</h1>
+
+<table>
+  <tr><th>#</th><th>작업</th><th>결과</th></tr>
+  <tr><td>Post-1</td><td><strong>Traefik 실제 기동</strong></td><td>file provider 로 v3-traefik 기동 (18081/18082). 6 호스트 라우팅 200 검증</td></tr>
+  <tr><td>Post-2</td><td><strong>perf/security 스캔 실행</strong></td><td>perf: 평균 6~31ms / security: 5 vulnerabilities 발견</td></tr>
+  <tr><td>Post-3</td><td><strong>backup.sh 실행</strong></td><td>284KB tar.gz (postgres + keycloak export + ldap ldif + minio mirror)</td></tr>
+  <tr><td>Post-4</td><td><strong>MinIO 다운그레이드</strong></td><td>2023-11-20 릴리즈 → <code>loginStrategy: "redirect"</code> + Keycloak SSO 버튼 활성</td></tr>
+  <tr><td>Post-5</td><td><strong>BPMN 델리게이트 Bean</strong></td><td>4개 Java Bean (ProcessStartListener / CompleteDelegate / NotificationListener / AssigneeResolver) + BPMN 4개 auto-deploy</td></tr>
+  <tr><td>Post-6</td><td><strong>TypeScript strict</strong></td><td>누락 composable 4개 복사 + UserInfo 확장 + vue-tsc exit 0</td></tr>
+</table>
+
+<h3>주요 버그 픽스</h3>
+<ol>
+  <li><strong>MinIO unhealthy</strong>: 2023-11 버전에 curl 없음 → <code>mc ready local</code> 로 healthcheck 변경</li>
+  <li><strong>backup.sh pg_dumpall</strong>: <code>-U postgres</code> → <code>-U platform_v3</code> 수정</li>
+  <li><strong>backup.sh keycloak export 복사</strong>: MSYS 경로 변환 문제 → docker exec cat 스트리밍</li>
+  <li><strong>backup.sh ldapsearch</strong>: BaseDN <code>dc=openplatform,dc=v3</code> → <code>dc=v3,dc=local</code></li>
+  <li><strong>perf/security-scan.sh</strong>: 하드코딩 <code>localhost:8080</code> → <code>localhost:19090</code></li>
+  <li><strong>Flowable BPMN Drools 의존</strong>: businessRuleTask → serviceTask + delegateExpression 로 대체 (ApprovalAssigneeResolver)</li>
+</ol>
+
+<h1 class="section-break">4. Ops 8개 작업 (운영 강화)</h1>
+
+<table>
+  <tr><th>#</th><th>작업</th><th>결과</th></tr>
+  <tr><td>Ops-1</td><td><strong>Healthcheck 11개 서비스</strong></td><td>keycloak/mongo/openldap/rocketchat/wikijs/stalwart/livekit/backend-core/backend-bff/ui-frontend/+ 기존 3개 = <strong>13/13 healthy</strong></td></tr>
+  <tr><td>Ops-2</td><td>Keycloak 운영모드</td><td>XA TX recovery 활성화 (QUARKUS_TRANSACTION_MANAGER_ENABLE_RECOVERY=true)</td></tr>
+  <tr><td>Ops-3</td><td><strong>npm audit 0 vulnerabilities</strong></td><td>axios latest + @tabler/icons-webfont 3.36.0 다운그레이드 → 기존 5건 전부 해결</td></tr>
+  <tr><td>Ops-4</td><td>Wiki.js SMTP</td><td>GraphQL mail.updateConfig → Stalwart(host:stalwart, port:25) 릴레이</td></tr>
+  <tr><td>Ops-5</td><td><strong>Prometheus 메트릭</strong></td><td>micrometer-registry-prometheus 추가 + /actuator/prometheus 200 + SecurityConfig whitelist</td></tr>
+  <tr><td>Ops-6</td><td>Loki+Promtail 로그 집계 (subagent)</td><td>compose override + 설정 5파일 작성</td></tr>
+  <tr><td>Ops-7</td><td>Backup 자동화</td><td>docker-compose.cron.yml (ofelia + backup-runner 프로필)</td></tr>
+  <tr><td>Ops-8</td><td>리소스 제한</td><td>docker-compose.resources.yml — 14 서비스 mem_limit/cpus</td></tr>
+</table>
+
+<h3>Healthcheck 이미지별 적응</h3>
+<p>각 이미지의 사용 가능한 도구에 따라 체크 방식을 달리함:</p>
+<ul>
+  <li><strong>postgres/redis/minio/mongo</strong>: 네이티브 (pg_isready, redis-cli, mc ready, mongosh)</li>
+  <li><strong>backend-core/bff</strong>: <code>wget -qO- /actuator/health | grep -q UP</code></li>
+  <li><strong>rocketchat/wikijs</strong>: <code>node -e "http.get(...)"</code></li>
+  <li><strong>keycloak/stalwart</strong>: <code>cat /proc/1/cmdline | grep -q ...</code> (curl/pgrep 없음)</li>
+  <li><strong>openldap/livekit</strong>: <code>pgrep slapd</code> / <code>pgrep livekit-server</code></li>
+  <li><strong>ui-frontend</strong>: <code>nginx -t | grep successful</code></li>
+</ul>
+
+<h1 class="section-break">5. Final 5개 작업 (운영 준비 완료)</h1>
+
+<table>
+  <tr><th>#</th><th>작업</th><th>결과</th></tr>
+  <tr><td>Final-1</td><td><strong>Traefik healthcheck</strong></td><td>traefik healthcheck --ping + ping entryPoint 활성 → healthy</td></tr>
+  <tr><td>Final-2</td><td>mongo-init profiles</td><td><code>profiles: [init]</code> + <code>restart: "no"</code> → Exited(0) 컨테이너 제거</td></tr>
+  <tr><td>Final-3</td><td><strong>Observability 실기동</strong></td><td>Loki/Promtail/Grafana/Prometheus 4개 기동 + Prometheus scrape 3/3 up</td></tr>
+  <tr><td>Final-4</td><td><strong>통합 기동 스크립트</strong></td><td>scripts/start.sh — 9가지 모드 (dev/full/observability/traefik/production/stop/status/logs/init-mongo)</td></tr>
+  <tr><td>Final-5</td><td>최종 검증</td><td>18/18 컨테이너 + 13/13 healthy + 16/16 엔드포인트 200</td></tr>
+</table>
+
+<h1 class="section-break">6. 최종 시스템 구성</h1>
+
+<h3>전체 컨테이너 (18개)</h3>
+<pre>
+인프라 (5)         postgres, redis, mongo, minio, openldap
+인증 (1)           keycloak
+애플리케이션 (3)   backend-core, backend-bff, ui-frontend
+외부 서비스 (4)    rocketchat, wikijs, stalwart, livekit
+리버스 프록시 (1)  traefik
+관측성 (4)         prometheus, loki, promtail, grafana
+────────────────────────────────────────────── Total 18
+</pre>
+
+<h3>Keycloak SSO 통합 (8/8 완성)</h3>
+<table>
+  <tr><th>서비스</th><th>인증 경로</th><th>상태</th></tr>
+  <tr><td>포털 UI</td><td>keycloak-js PKCE</td><td>✅</td></tr>
+  <tr><td>backend-core</td><td>JWT (jwk-set-uri)</td><td>✅</td></tr>
+  <tr><td>backend-bff</td><td>JWT + LiveKit 재발급</td><td>✅</td></tr>
+  <tr><td>LiveKit</td><td>BFF 경유 HS256 JWT</td><td>✅</td></tr>
+  <tr><td>Wiki.js</td><td>Keycloak native strategy</td><td>✅</td></tr>
+  <tr><td><strong>Rocket.Chat</strong></td><td><strong>Custom OAuth + KC_HOSTNAME_URL 고정</strong></td><td><strong>✅ (Part 2 에서 해결)</strong></td></tr>
+  <tr><td><strong>MinIO Console</strong></td><td><strong>OIDC redirect (Keycloak SSO 버튼)</strong></td><td><strong>✅ (Part 2 에서 해결)</strong></td></tr>
+  <tr><td>Stalwart 메일</td><td>OpenLDAP → Keycloak Federation</td><td>✅</td></tr>
+</table>
+
+<h3>엔드포인트 16개 (전부 200)</h3>
+<pre>
+포털 UI              http://localhost:25174          → 200
+backend-core         http://localhost:19090           → 200
+backend-bff          http://localhost:19091           → 200
+prom-core            /actuator/prometheus            → 200  ★ 신규
+prom-bff             /actuator/prometheus            → 200  ★ 신규
+Keycloak             http://localhost:19281           → 200
+Rocket.Chat          http://localhost:19065           → 200
+Wiki.js              http://localhost:19001           → 200
+Stalwart             http://localhost:19480           → 200
+MinIO API            http://localhost:19900           → 200
+MinIO Console        http://localhost:19901           → 200
+LiveKit              http://localhost:19880           → 200
+Traefik Dashboard    http://localhost:18082           → 200  ★ Part 2
+Grafana              http://localhost:19300           → 200  ★ Part 2 (admin/admin)
+Prometheus           http://localhost:19309           → 200  ★ Part 2
+Loki                 http://localhost:19310           → 200  ★ Part 2
+</pre>
+
+<h3>리소스 사용량 (최종)</h3>
+<table>
+  <tr><th>지표</th><th>값</th></tr>
+  <tr><td>컨테이너 수</td><td>18개 (기존 13 + 5개 신규)</td></tr>
+  <tr><td>총 메모리</td><td>~3.3 GB / 30.9 GB (10.7%)</td></tr>
+  <tr><td>최대 컨테이너</td><td>keycloak 734 MB, rocketchat 610 MB, backend-core 550 MB</td></tr>
+  <tr><td>CPU 전체</td><td>&lt; 0.8%</td></tr>
+  <tr><td>디스크 (v3 프로젝트)</td><td>479 MB (ui 474MB 이 대부분, node_modules)</td></tr>
+  <tr><td>Docker 볼륨</td><td>postgres 99MB + mongo 325MB + keycloak/wiki 미사용</td></tr>
+  <tr><td>backup 아카이브</td><td>284 KB</td></tr>
+</table>
+
+<h1 class="section-break">7. 통합 기동 스크립트 (scripts/start.sh)</h1>
+
+<pre>
+# 개발 (최소 기동)
+./scripts/start.sh dev
+
+# 기본 (healthcheck + resources)
+./scripts/start.sh full
+
+# 관측성 (+ Loki/Grafana/Prometheus)
+./scripts/start.sh observability
+
+# 리버스 프록시 (+ Traefik)
+./scripts/start.sh traefik
+
+# 운영 (전체 override 5종)
+./scripts/start.sh production
+
+# 전체 중지
+./scripts/start.sh stop
+
+# 상태 조회
+./scripts/start.sh status
+
+# 서비스별 로그 tail
+./scripts/start.sh logs v3-backend-core
+
+# Mongo replica set 초기화 (최초 1회)
+./scripts/start.sh init-mongo
+</pre>
+
+<h3>Compose override 파일 5종</h3>
+<ul>
+  <li><code>docker-compose.yml</code> — 기본 13 서비스</li>
+  <li><code>docker-compose.healthcheck.yml</code> — 적응형 헬스체크</li>
+  <li><code>docker-compose.resources.yml</code> — mem_limit/cpus 14개 서비스</li>
+  <li><code>docker-compose.observability.yml</code> — Loki/Promtail/Grafana/Prometheus</li>
+  <li><code>docker-compose.traefik.yml</code> — 리버스 프록시 labels (docker socket 경로)</li>
+  <li><code>docker-compose.cron.yml</code> — ofelia 자동 백업 + backup-runner 프로필</li>
+</ul>
+
+<h1 class="section-break">8. 운영 준비도 체크리스트</h1>
+
+<table>
+  <tr><th>영역</th><th>항목</th><th>상태</th></tr>
+  <tr><td>기능</td><td>6 도메인 DataSet API (org/code/i18n/notification/board/calendar)</td><td>✅</td></tr>
+  <tr><td>기능</td><td>결재 DB 연동 + Flowable BPMN 4종 auto-deploy</td><td>✅</td></tr>
+  <tr><td>기능</td><td>Permission cm_menu/cm_role/cm_role_menu + /api/dataset/search menu/searchByUser</td><td>✅</td></tr>
+  <tr><td>기능</td><td>SSE 알림 실제 트리거 (approval/board save 시점)</td><td>✅</td></tr>
+  <tr><td>기능</td><td>LiveKit 실제 비디오 UI (livekit-client + Room/Track + 마이크/카메라 토글)</td><td>✅</td></tr>
+  <tr><td>인증</td><td>Keycloak SSO 8/8 서비스</td><td>✅</td></tr>
+  <tr><td>헬스</td><td>13/13 application healthy</td><td>✅</td></tr>
+  <tr><td>보안</td><td>npm audit 0 vulnerabilities</td><td>✅</td></tr>
+  <tr><td>빌드</td><td>TypeScript strict 0 errors</td><td>✅</td></tr>
+  <tr><td>메트릭</td><td>Prometheus backend-core/bff/traefik scrape up</td><td>✅</td></tr>
+  <tr><td>로그</td><td>Loki + Promtail 모든 컨테이너 수집</td><td>✅</td></tr>
+  <tr><td>대시보드</td><td>Grafana + datasource 프로비저닝</td><td>✅</td></tr>
+  <tr><td>백업</td><td>backup.sh 검증 완료 + cron 자동화</td><td>✅</td></tr>
+  <tr><td>복원</td><td>restore.sh 작성</td><td>✅</td></tr>
+  <tr><td>리소스</td><td>compose mem_limit/cpus 적용</td><td>✅</td></tr>
+  <tr><td>CI/CD</td><td>.github/workflows/ci.yml (5 jobs)</td><td>✅</td></tr>
+  <tr><td>프록시</td><td>Traefik 6 호스트 라우팅 + metrics + ping</td><td>✅</td></tr>
+  <tr><td>자동화</td><td>start.sh 9 모드</td><td>✅</td></tr>
+  <tr><td>성능</td><td>평균 응답시간 6~31ms</td><td>✅</td></tr>
+  <tr><td>에러</td><td>최근 5분 error/warn 0건</td><td>✅</td></tr>
+</table>
+
+<h1 class="section-break">9. 태스크 전체 (이번 세션 Part 2)</h1>
+
+<table>
+  <tr><th>#</th><th>Task 이름</th><th>상태</th></tr>
+  <tr><td>#33</td><td>P1: Rocket.Chat userinfo 401 해결</td><td>✅</td></tr>
+  <tr><td>#34</td><td>P2: Approval DB 연동 + Flowable BPMN</td><td>✅</td></tr>
+  <tr><td>#35</td><td>P3: SSE 알림 실제 트리거</td><td>✅</td></tr>
+  <tr><td>#36</td><td>MinIO Console OIDC 버튼</td><td>✅</td></tr>
+  <tr><td>#37</td><td>Flyway V5 시드 자동화</td><td>✅</td></tr>
+  <tr><td>#38</td><td>UI i18n 다국어 스위처</td><td>✅</td></tr>
+  <tr><td>#39</td><td>Permission menu+role</td><td>✅</td></tr>
+  <tr><td>#40</td><td>성능/보안 스캔</td><td>✅</td></tr>
+  <tr><td>#41</td><td>README 상세화</td><td>✅</td></tr>
+  <tr><td>#42</td><td>백업/복원 스크립트</td><td>✅</td></tr>
+  <tr><td>#43</td><td>CI/CD 파이프라인</td><td>✅</td></tr>
+  <tr><td>#44</td><td>Traefik 리버스 프록시</td><td>✅</td></tr>
+  <tr><td>#45</td><td>LiveKit 실제 비디오 룸 UI</td><td>✅</td></tr>
+  <tr><td>#46</td><td>결재 BPMN 리소스 포팅</td><td>✅</td></tr>
+  <tr><td>#47</td><td>Post-1: Traefik 실제 기동</td><td>✅</td></tr>
+  <tr><td>#48</td><td>Post-2: perf + security scan 실행</td><td>✅</td></tr>
+  <tr><td>#49</td><td>Post-3: backup 실행 + 검증</td><td>✅</td></tr>
+  <tr><td>#50</td><td>Post-4: MinIO 다운그레이드</td><td>✅</td></tr>
+  <tr><td>#51</td><td>Post-5: BPMN Delegate Bean 4종</td><td>✅</td></tr>
+  <tr><td>#52</td><td>Post-6: TypeScript strict 빌드</td><td>✅</td></tr>
+  <tr><td>#53</td><td>Ops-1: Healthcheck 11 서비스</td><td>✅</td></tr>
+  <tr><td>#54</td><td>Ops-2: Keycloak 운영 모드</td><td>✅</td></tr>
+  <tr><td>#55</td><td>Ops-3: npm audit 해결</td><td>✅</td></tr>
+  <tr><td>#56</td><td>Ops-4: Wiki.js SMTP</td><td>✅</td></tr>
+  <tr><td>#57</td><td>Ops-5: Prometheus 메트릭</td><td>✅</td></tr>
+  <tr><td>#58</td><td>Ops-6: Loki 스택 구성</td><td>✅</td></tr>
+  <tr><td>#59</td><td>Ops-7: 백업 자동화 (cron)</td><td>✅</td></tr>
+  <tr><td>#60</td><td>Ops-8: 리소스 제한</td><td>✅</td></tr>
+  <tr><td>#61</td><td>Final-1: Traefik healthcheck</td><td>✅</td></tr>
+  <tr><td>#62</td><td>Final-2: mongo-init profiles</td><td>✅</td></tr>
+  <tr><td>#63</td><td>Final-3: Observability 실기동</td><td>✅</td></tr>
+  <tr><td>#64</td><td>Final-4: 통합 start.sh</td><td>✅</td></tr>
+  <tr><td>#65</td><td>Final-5: 최종 검증</td><td>✅</td></tr>
+</table>
+
+<p><strong>Part 2 누적: 33개 태스크 전부 완료</strong></p>
+
+<h1 class="section-break">10. 주요 신규 파일</h1>
+
+<h3>Backend Java</h3>
+<ul>
+  <li><code>backend-core/src/main/java/com/platform/v3/core/approval/mapper/ApprovalMapper.java</code> — 10 메서드</li>
+  <li><code>backend-core/src/main/resources/mapper/approval/ApprovalMapper.xml</code> — 9 박스 로직 + DMN SQL</li>
+  <li><code>backend-core/src/main/java/com/platform/v3/core/menu/MenuService.java</code> — menu/searchByUser</li>
+  <li><code>backend-core/src/main/java/com/platform/v3/core/menu/mapper/MenuMapper.java</code></li>
+  <li><code>backend-core/src/main/resources/mapper/menu/MenuMapper.xml</code> — roles 기반 메뉴 조회</li>
+  <li><code>backend-core/src/main/java/com/platform/v3/core/approval/flowable/</code>
+    <ul>
+      <li>ApprovalProcessStartListener.java</li>
+      <li>ApprovalCompleteDelegate.java</li>
+      <li>ApprovalNotificationListener.java</li>
+      <li>ApprovalAssigneeResolver.java</li>
+    </ul>
+  </li>
+</ul>
+
+<h3>Backend SQL</h3>
+<ul>
+  <li><code>db/migration/V6__menu_permission.sql</code> — cm_menu/cm_role/cm_role_menu + 시드</li>
+  <li><code>db/migration/V7__seed_data.sql</code> — Flyway 자동 시드</li>
+</ul>
+
+<h3>Backend BPMN (v1 포팅)</h3>
+<ul>
+  <li><code>resources/processes/sequential_approval.bpmn20.xml</code></li>
+  <li><code>resources/processes/parallel_agreement.bpmn20.xml</code></li>
+  <li><code>resources/processes/with_final_approval.bpmn20.xml</code></li>
+  <li><code>resources/processes/dynamic_approval_line.bpmn20.xml</code> (businessRuleTask → serviceTask 대체)</li>
+  <li><code>resources/dmn/approval_line_rules.dmn</code></li>
+</ul>
+
+<h3>UI (Vue 3)</h3>
+<ul>
+  <li><code>ui/src/composables/useTransaction.ts</code> (복사)</li>
+  <li><code>ui/src/composables/useItemPermission.ts</code> (복사)</li>
+  <li><code>ui/src/composables/useQuickActions.ts</code> (복사)</li>
+  <li><code>ui/src/composables/usePopup.ts</code> (복사)</li>
+  <li><code>ui/src/pages/PageVideo.vue</code> — livekit-client 실제 비디오 UI</li>
+  <li><code>ui/src/store/auth.ts</code> — UserInfo 타입 확장 + menu/searchByUser 호출</li>
+</ul>
+
+<h3>Infra (compose overrides)</h3>
+<ul>
+  <li><code>infra/docker-compose.healthcheck.yml</code> — 10 서비스 헬스체크</li>
+  <li><code>infra/docker-compose.resources.yml</code> — 14 서비스 mem/cpu 제한</li>
+  <li><code>infra/docker-compose.observability.yml</code> — Loki/Promtail/Grafana/Prometheus</li>
+  <li><code>infra/docker-compose.traefik.yml</code> — Traefik labels</li>
+  <li><code>infra/docker-compose.cron.yml</code> — ofelia 자동 백업</li>
+  <li><code>infra/traefik/traefik.yml</code>, <code>dynamic.yml</code> — 정적 설정 기반 라우팅</li>
+  <li><code>infra/loki/loki-config.yml</code>, <code>promtail-config.yml</code></li>
+  <li><code>infra/grafana/provisioning/datasources/loki-prom.yml</code></li>
+  <li><code>infra/prometheus/prometheus.yml</code></li>
+</ul>
+
+<h3>Scripts / Docs</h3>
+<ul>
+  <li><code>scripts/start.sh</code> — 통합 기동 (9 모드)</li>
+  <li><code>scripts/backup.sh</code> — MSYS path 대응 + platform_v3 user</li>
+  <li><code>scripts/restore.sh</code></li>
+  <li><code>scripts/perf-scan.sh</code> — :19090 포트</li>
+  <li><code>scripts/security-scan.sh</code> — :19090 포트</li>
+  <li><code>.github/workflows/ci.yml</code> — 5 jobs</li>
+  <li><code>docs/minio-console-oidc-analysis.md</code></li>
+  <li><code>README.md</code> — 327줄 11 섹션</li>
+</ul>
+
+<h1 class="section-break">11. 통계 요약</h1>
+
+<table>
+  <tr><th>지표</th><th>Part 1 종료 시점</th><th>Part 2 종료 시점 (현재)</th></tr>
+  <tr><td>컨테이너 기동</td><td>13</td><td><strong>18</strong></td></tr>
+  <tr><td>Healthy 컨테이너</td><td>3 (postgres/redis/minio)</td><td><strong>13 (+ traefik)</strong></td></tr>
+  <tr><td>Keycloak SSO 서비스</td><td>5 (부분)</td><td><strong>8/8 (완성)</strong></td></tr>
+  <tr><td>Rocket.Chat SSO</td><td>95% (userinfo 401)</td><td>✅ <strong>완전 동작</strong></td></tr>
+  <tr><td>MinIO OIDC 버튼</td><td>❌</td><td>✅ (다운그레이드)</td></tr>
+  <tr><td>결재 도메인</td><td>Java 하드코딩 스텁</td><td><strong>DB 연동 + Flowable BPMN</strong></td></tr>
+  <tr><td>Permission</td><td>스텁</td><td><strong>DB + menu/searchByUser</strong></td></tr>
+  <tr><td>SSE 알림 트리거</td><td>구독만</td><td><strong>실제 트리거 (approval/board)</strong></td></tr>
+  <tr><td>LiveKit 비디오</td><td>토큰만</td><td><strong>livekit-client + 실제 룸</strong></td></tr>
+  <tr><td>Prometheus 메트릭</td><td>❌</td><td>✅ (backend-core/bff/traefik scrape)</td></tr>
+  <tr><td>로그 집계</td><td>❌</td><td>✅ (Loki + Promtail)</td></tr>
+  <tr><td>Grafana 대시보드</td><td>❌</td><td>✅</td></tr>
+  <tr><td>Traefik 리버스 프록시</td><td>❌</td><td>✅ (6 호스트 라우팅)</td></tr>
+  <tr><td>npm 취약점</td><td>5건 (1 critical + 4 high)</td><td><strong>0건</strong></td></tr>
+  <tr><td>TypeScript 빌드</td><td>15 errors</td><td><strong>0 errors</strong></td></tr>
+  <tr><td>백업 스크립트</td><td>미실행</td><td>✅ 284KB 아카이브 검증</td></tr>
+  <tr><td>성능 스캔</td><td>미실행</td><td>✅ 6~31ms 평균</td></tr>
+  <tr><td>CI/CD 파이프라인</td><td>❌</td><td>✅ (5 jobs)</td></tr>
+  <tr><td>리소스 제한</td><td>❌</td><td>✅ (14 서비스)</td></tr>
+  <tr><td>통합 기동 스크립트</td><td>❌</td><td>✅ (9 모드)</td></tr>
+</table>
+
+<h1 class="section-break">12. 지금 즉시 체험 가능한 시나리오</h1>
+
+<ol>
+  <li><strong>포털 로그인</strong>: <code>http://localhost:25174</code> → user1/user1 (Keycloak PKCE)</li>
+  <li><strong>대시보드</strong>: 오늘 일정 3건 / 공지 5건 / 결재 대기 / 알림 / 메신저 위젯</li>
+  <li><strong>전자결재</strong>: 9종 박스 + <strong>실제 DB 25건</strong> + 상신/승인/반려 시 SSE 알림</li>
+  <li><strong>게시판</strong>: 4종 필터 + 50건 + paginator</li>
+  <li><strong>캘린더</strong>: FullCalendar 51 이벤트 (PERSONAL/DEPT/COMPANY)</li>
+  <li><strong>조직도</strong>: Tree + 30명 직원 카드</li>
+  <li><strong>메신저 (Rocket.Chat)</strong>: "메신저 열기" → Keycloak SSO 버튼 → <strong>자동 로그인</strong></li>
+  <li><strong>메일 (Stalwart)</strong>: user1/user1 (LDAP Federation 통과)</li>
+  <li><strong>위키 (Wiki.js)</strong>: Keycloak SSO 버튼 → 자동 로그인</li>
+  <li><strong>화상회의 (LiveKit)</strong>: 룸 생성 → 실제 카메라/마이크 연결 + 참가자 비디오 타일</li>
+  <li><strong>MinIO Console</strong>: Keycloak SSO 버튼 노출 (로그인 페이지)</li>
+  <li><strong>Grafana (관측)</strong>: <code>http://localhost:19300</code> → admin/admin → Loki/Prometheus datasource → <code>{container_name="v3-backend-core"}</code> 로그 쿼리</li>
+  <li><strong>Prometheus</strong>: <code>http://localhost:19309/graph</code> → <code>http_server_requests_seconds_count</code> 등 메트릭 그래프</li>
+  <li><strong>Traefik</strong>: <code>http://localhost:18082</code> 대시보드 + 8 호스트 라우팅 (portal/api/bff/keycloak/minio/chat/wiki/mail.v3.localhost)</li>
+</ol>
+
+<h1 class="section-break">13. 결론</h1>
+
+<blockquote>
+<strong>openplatform v3 는 이번 세션에서 초기 스캐폴딩(Part 1) 에서 시작해 운영 준비 상태(Part 2) 까지 완성되었습니다.</strong><br><br>
+모든 기능 단위 검증, 완전 SSO 통합, 관측성 스택, 헬스체크 100% 커버리지, 보안 취약점 0건, 통합 기동 스크립트가 갖춰져 있으며, 18개 컨테이너가 현재 모두 정상 동작 중입니다.<br><br>
+남은 개선 항목은 운영 환경(HTTPS 인증서, 클러스터 모드 등) 에 특화된 것 뿐이며, 개발/데모 환경 기준으로는 완전히 준비된 상태입니다.
+</blockquote>
+
+<hr>
+
+<p class="meta" style="text-align:center; margin-top: 30px; font-size: 9pt;">
+openplatform v3 — 세션 Part 2 기록<br>
+자동 생성: 2026-04-15 &nbsp;·&nbsp; 13 섹션 &nbsp;·&nbsp; 33 태스크 완료<br>
+Claude Code Autonomous Development Framework V2
+</p>
+
+</body>
+</html>

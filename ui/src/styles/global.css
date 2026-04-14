@@ -1,0 +1,27 @@
+:root {
+  --v3-primary: #3b82f6;
+  --v3-bg: #f8fafc;
+}
+
+body {
+  background: var(--v3-bg);
+  color: #1e293b;
+}
+
+.p-toast {
+  z-index: 10000;
+}
+
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1rem;
+  padding: 1rem;
+}
+
+.card {
+  background: #fff;
+  border-radius: 0.75rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  padding: 1rem;
+}

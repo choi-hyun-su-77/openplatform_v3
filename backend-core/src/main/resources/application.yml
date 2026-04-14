@@ -1,0 +1,92 @@
+server:
+  port: ${SERVER_PORT:19090}
+  servlet:
+    context-path: /
+
+spring:
+  application:
+    name: openplatform-v3-backend-core
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:local}
+
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:19432}/${DB_NAME:platform_v3}?currentSchema=platform_v3
+    username: ${DB_USER:platform_v3}
+    password: ${DB_PASSWORD:platform_v3_pass}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 5
+
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:19379}
+      password: ${REDIS_PASSWORD:v3_redis_pass}
+
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    default-schema: platform_v3
+    schemas: platform_v3
+    locations: classpath:db/migration
+
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          jwk-set-uri: ${KEYCLOAK_JWK_URI:http://keycloak:8080/realms/openplatform-v3/protocol/openid-connect/certs}
+
+  mvc:
+    async:
+      request-timeout: 600000
+
+mybatis:
+  mapper-locations: classpath:mapper/**/*.xml
+  configuration:
+    map-underscore-to-camel-case: true
+    default-fetch-size: 100
+    default-statement-timeout: 30
+
+flowable:
+  database-schema-update: true
+  database-schema: flowable_v3
+  async-executor-activate: true
+  check-process-definitions: true
+  process:
+    definition-cache-limit: 10
+    # classpath:/processes/*.bpmn20.xml 자동 배포 (기본값)
+  dmn:
+    enabled: true
+    deploy-resources: true
+    resource-location: classpath*:/dmn/
+    resource-suffixes: dmn,dmn.xml
+
+minio:
+  endpoint: ${MINIO_ENDPOINT:http://localhost:19900}
+  access-key: ${MINIO_ACCESS_KEY:v3minio}
+  secret-key: ${MINIO_SECRET_KEY:v3minio_pass}
+  bucket: ${MINIO_BUCKET:platform-v3}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: when-authorized
+    prometheus:
+      enabled: true
+  metrics:
+    tags:
+      application: openplatform-v3-backend-core
+  prometheus:
+    metrics:
+      export:
+        enabled: true
+
+logging:
+  level:
+    com.platform.v3: DEBUG
+    org.springframework.security: INFO

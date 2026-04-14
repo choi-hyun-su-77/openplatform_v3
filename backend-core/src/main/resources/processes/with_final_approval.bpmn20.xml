@@ -1,0 +1,352 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  전결 가능 결재 프로세스 (Approval with Final-Approval Authority)
+  ===============================================================
+  용도: 기안 → 1차(팀장) → 2차(본부장) → 3차(대표) 순차 결재.
+        각 단계에서 전결 규칙에 따라 남은 단계를 건너뛸 수 있다.
+        - 금액 < 100만원: 팀장 전결
+        - 금액 < 1000만원: 본부장 전결
+        - 그 외: 대표까지
+
+  ExecutionListener에서 전결 규칙 테이블을 조회하여 isFinalApproval 변수를 설정한다.
+  Flowable 7.x 호환. v1(openplatform/bpmn)에서 v3로 포팅.
+-->
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
+             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+             xmlns:flowable="http://flowable.org/bpmn"
+             xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+             xmlns:omgdc="http://www.omg.org/spec/DD/20100524/DC"
+             xmlns:omgdi="http://www.omg.org/spec/DD/20100524/DI"
+             targetNamespace="http://openplatform-v3.example.com/approval"
+             typeLanguage="http://www.w3.org/2001/XMLSchema"
+             expressionLanguage="http://www.w3.org/1999/XPath">
+
+  <process id="withFinalApproval" name="전결 가능 결재 프로세스" isExecutable="true">
+
+    <documentation>전결 결재: 각 결재 단계에서 전결 권한이 있으면 남은 단계를 생략하고 결재 완료한다.
+전결 규칙: 금액 100만 미만 → 팀장, 1000만 미만 → 본부장, 그 외 → 대표.</documentation>
+
+    <!-- ==================== 시작 ==================== -->
+    <startEvent id="startEvent" name="결재 시작">
+      <extensionElements>
+        <flowable:executionListener event="start"
+            delegateExpression="${approvalProcessStartListener}" />
+      </extensionElements>
+    </startEvent>
+
+    <!-- ==================== 기안 ==================== -->
+    <userTask id="draftTask" name="기안"
+              flowable:assignee="${initiator}"
+              flowable:formKey="form-draft">
+      <extensionElements>
+        <flowable:taskListener event="create"
+            delegateExpression="${approvalNotificationListener}" />
+        <flowable:formProperty id="comment" name="의견" type="string" required="false" />
+        <flowable:formProperty id="action" name="결재액션" type="enum" required="true">
+          <flowable:value id="APPROVE" name="승인" />
+          <flowable:value id="REJECT" name="반려" />
+        </flowable:formProperty>
+        <flowable:formProperty id="amount" name="금액" type="long" required="true" />
+      </extensionElements>
+    </userTask>
+
+    <!-- ==================== 1차 결재 (팀장) ==================== -->
+    <userTask id="firstApproval" name="1차 결재 (팀장)"
+              flowable:assignee="${teamLeader}"
+              flowable:candidateGroups="${deptGroup}"
+              flowable:formKey="form-approval">
+      <extensionElements>
+        <!-- 전결 규칙 판단: 태스크 완료 시 전결 여부를 평가 -->
+        <flowable:executionListener event="end"
+            delegateExpression="${finalApprovalRuleListener}">
+          <!-- finalApprovalRuleListener는 amount, currentLevel 변수를 읽고
+               isFinalApproval 변수를 설정한다.
+               예: amount < 1000000 && currentLevel == 'TEAM_LEADER' → isFinalApproval = true -->
+        </flowable:executionListener>
+        <flowable:taskListener event="create"
+            delegateExpression="${approvalNotificationListener}" />
+        <flowable:taskListener event="complete"
+            delegateExpression="${approvalHistoryListener}" />
+        <flowable:formProperty id="comment" name="의견" type="string" required="false" />
+        <flowable:formProperty id="action" name="결재액션" type="enum" required="true">
+          <flowable:value id="APPROVE" name="승인" />
+          <flowable:value id="REJECT" name="반려" />
+        </flowable:formProperty>
+      </extensionElements>
+    </userTask>
+
+    <!-- ==================== 1차 승인/반려 분기 ==================== -->
+    <exclusiveGateway id="firstActionGateway" name="1차 승인/반려" />
+
+    <!-- ==================== 1차 전결 여부 분기 ==================== -->
+    <exclusiveGateway id="firstFinalGateway" name="1차 전결 가능?" />
+
+    <!-- ==================== 2차 결재 (본부장) ==================== -->
+    <userTask id="secondApproval" name="2차 결재 (본부장)"
+              flowable:assignee="${divisionHead}"
+              flowable:formKey="form-approval">
+      <extensionElements>
+        <flowable:executionListener event="end"
+            delegateExpression="${finalApprovalRuleListener}" />
+        <flowable:taskListener event="create"
+            delegateExpression="${approvalNotificationListener}" />
+        <flowable:taskListener event="complete"
+            delegateExpression="${approvalHistoryListener}" />
+        <flowable:formProperty id="comment" name="의견" type="string" required="false" />
+        <flowable:formProperty id="action" name="결재액션" type="enum" required="true">
+          <flowable:value id="APPROVE" name="승인" />
+          <flowable:value id="REJECT" name="반려" />
+        </flowable:formProperty>
+      </extensionElements>
+    </userTask>
+
+    <!-- ==================== 2차 승인/반려 분기 ==================== -->
+    <exclusiveGateway id="secondActionGateway" name="2차 승인/반려" />
+
+    <!-- ==================== 2차 전결 여부 분기 ==================== -->
+    <exclusiveGateway id="secondFinalGateway" name="2차 전결 가능?" />
+
+    <!-- ==================== 3차 결재 (대표) ==================== -->
+    <userTask id="thirdApproval" name="3차 결재 (대표)"
+              flowable:assignee="${ceo}"
+              flowable:formKey="form-approval">
+      <extensionElements>
+        <flowable:taskListener event="create"
+            delegateExpression="${approvalNotificationListener}" />
+        <flowable:taskListener event="complete"
+            delegateExpression="${approvalHistoryListener}" />
+        <flowable:formProperty id="comment" name="의견" type="string" required="false" />
+        <flowable:formProperty id="action" name="결재액션" type="enum" required="true">
+          <flowable:value id="APPROVE" name="승인" />
+          <flowable:value id="REJECT" name="반려" />
+        </flowable:formProperty>
+      </extensionElements>
+    </userTask>
+
+    <!-- ==================== 남은 단계 Skip 처리 ==================== -->
+    <serviceTask id="skipRemainingSteps" name="남은 단계 Skip"
+                 flowable:delegateExpression="${skipRemainingStepsDelegate}">
+      <documentation>전결 시 남은 결재 단계를 건너뛰고 완료 처리한다.
+결재 이력에 '전결' 사유를 기록한다.</documentation>
+    </serviceTask>
+
+    <!-- ==================== 결재 완료 처리 ==================== -->
+    <serviceTask id="approvalComplete" name="결재 완료 처리"
+                 flowable:delegateExpression="${approvalCompleteDelegate}" />
+
+    <!-- ==================== 반려 처리 ==================== -->
+    <serviceTask id="rejectionTask" name="반려 처리"
+                 flowable:delegateExpression="${rejectionDelegate}" />
+
+    <!-- ==================== 종료 ==================== -->
+    <endEvent id="endApproved" name="결재 완료" />
+    <endEvent id="endRejected" name="반려 종료" />
+
+    <!-- ==================== 시퀀스 플로우 ==================== -->
+    <sequenceFlow id="flow_start_draft" sourceRef="startEvent" targetRef="draftTask" />
+    <sequenceFlow id="flow_draft_first" sourceRef="draftTask" targetRef="firstApproval" />
+    <sequenceFlow id="flow_first_action" sourceRef="firstApproval" targetRef="firstActionGateway" />
+
+    <!-- 1차 승인 → 전결 확인 -->
+    <sequenceFlow id="flow_first_approved" name="승인" sourceRef="firstActionGateway" targetRef="firstFinalGateway">
+      <conditionExpression xsi:type="tFormalExpression">${action == 'APPROVE'}</conditionExpression>
+    </sequenceFlow>
+
+    <!-- 1차 반려 -->
+    <sequenceFlow id="flow_first_rejected" name="반려" sourceRef="firstActionGateway" targetRef="rejectionTask">
+      <conditionExpression xsi:type="tFormalExpression">${action == 'REJECT'}</conditionExpression>
+    </sequenceFlow>
+
+    <!-- 1차 전결 → Skip → 완료 -->
+    <sequenceFlow id="flow_first_final" name="전결 (금액 &lt; 100만)" sourceRef="firstFinalGateway" targetRef="skipRemainingSteps">
+      <conditionExpression xsi:type="tFormalExpression">${isFinalApproval == true}</conditionExpression>
+    </sequenceFlow>
+
+    <!-- 1차 일반 → 2차 결재 -->
+    <sequenceFlow id="flow_first_normal" name="일반 결재" sourceRef="firstFinalGateway" targetRef="secondApproval">
+      <conditionExpression xsi:type="tFormalExpression">${isFinalApproval == false}</conditionExpression>
+    </sequenceFlow>
+
+    <!-- 2차 결재 흐름 -->
+    <sequenceFlow id="flow_second_action" sourceRef="secondApproval" targetRef="secondActionGateway" />
+
+    <sequenceFlow id="flow_second_approved" name="승인" sourceRef="secondActionGateway" targetRef="secondFinalGateway">
+      <conditionExpression xsi:type="tFormalExpression">${action == 'APPROVE'}</conditionExpression>
+    </sequenceFlow>
+
+    <sequenceFlow id="flow_second_rejected" name="반려" sourceRef="secondActionGateway" targetRef="rejectionTask">
+      <conditionExpression xsi:type="tFormalExpression">${action == 'REJECT'}</conditionExpression>
+    </sequenceFlow>
+
+    <!-- 2차 전결 → Skip → 완료 -->
+    <sequenceFlow id="flow_second_final" name="전결 (금액 &lt; 1000만)" sourceRef="secondFinalGateway" targetRef="skipRemainingSteps">
+      <conditionExpression xsi:type="tFormalExpression">${isFinalApproval == true}</conditionExpression>
+    </sequenceFlow>
+
+    <!-- 2차 일반 → 3차 결재 -->
+    <sequenceFlow id="flow_second_normal" name="일반 결재" sourceRef="secondFinalGateway" targetRef="thirdApproval">
+      <conditionExpression xsi:type="tFormalExpression">${isFinalApproval == false}</conditionExpression>
+    </sequenceFlow>
+
+    <!-- 3차 결재 → 완료 -->
+    <sequenceFlow id="flow_third_complete" sourceRef="thirdApproval" targetRef="approvalComplete" />
+
+    <!-- Skip → 완료 -->
+    <sequenceFlow id="flow_skip_complete" sourceRef="skipRemainingSteps" targetRef="approvalComplete" />
+
+    <!-- 완료/반려 → 종료 -->
+    <sequenceFlow id="flow_complete_end" sourceRef="approvalComplete" targetRef="endApproved" />
+    <sequenceFlow id="flow_reject_end" sourceRef="rejectionTask" targetRef="endRejected" />
+
+  </process>
+
+  <!-- ==================== BPMN Diagram ==================== -->
+  <bpmndi:BPMNDiagram id="BPMNDiagram_withFinalApproval">
+    <bpmndi:BPMNPlane bpmnElement="withFinalApproval" id="BPMNPlane_withFinalApproval">
+
+      <bpmndi:BPMNShape id="shape_startEvent" bpmnElement="startEvent">
+        <omgdc:Bounds x="100" y="200" width="36" height="36" />
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="shape_draftTask" bpmnElement="draftTask">
+        <omgdc:Bounds x="200" y="178" width="120" height="80" />
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="shape_firstApproval" bpmnElement="firstApproval">
+        <omgdc:Bounds x="380" y="178" width="140" height="80" />
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="shape_firstActionGateway" bpmnElement="firstActionGateway" isMarkerVisible="true">
+        <omgdc:Bounds x="570" y="198" width="40" height="40" />
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="shape_firstFinalGateway" bpmnElement="firstFinalGateway" isMarkerVisible="true">
+        <omgdc:Bounds x="670" y="198" width="40" height="40" />
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="shape_secondApproval" bpmnElement="secondApproval">
+        <omgdc:Bounds x="770" y="178" width="160" height="80" />
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="shape_secondActionGateway" bpmnElement="secondActionGateway" isMarkerVisible="true">
+        <omgdc:Bounds x="980" y="198" width="40" height="40" />
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="shape_secondFinalGateway" bpmnElement="secondFinalGateway" isMarkerVisible="true">
+        <omgdc:Bounds x="1080" y="198" width="40" height="40" />
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="shape_thirdApproval" bpmnElement="thirdApproval">
+        <omgdc:Bounds x="1180" y="178" width="140" height="80" />
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="shape_skipRemainingSteps" bpmnElement="skipRemainingSteps">
+        <omgdc:Bounds x="870" y="60" width="160" height="80" />
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="shape_approvalComplete" bpmnElement="approvalComplete">
+        <omgdc:Bounds x="1380" y="178" width="140" height="80" />
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="shape_rejectionTask" bpmnElement="rejectionTask">
+        <omgdc:Bounds x="770" y="360" width="120" height="80" />
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="shape_endApproved" bpmnElement="endApproved">
+        <omgdc:Bounds x="1580" y="200" width="36" height="36" />
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="shape_endRejected" bpmnElement="endRejected">
+        <omgdc:Bounds x="950" y="382" width="36" height="36" />
+      </bpmndi:BPMNShape>
+
+      <!-- Edges -->
+      <bpmndi:BPMNEdge id="edge_flow_start_draft" bpmnElement="flow_start_draft">
+        <omgdi:waypoint x="136" y="218" />
+        <omgdi:waypoint x="200" y="218" />
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="edge_flow_draft_first" bpmnElement="flow_draft_first">
+        <omgdi:waypoint x="320" y="218" />
+        <omgdi:waypoint x="380" y="218" />
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="edge_flow_first_action" bpmnElement="flow_first_action">
+        <omgdi:waypoint x="520" y="218" />
+        <omgdi:waypoint x="570" y="218" />
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="edge_flow_first_approved" bpmnElement="flow_first_approved">
+        <omgdi:waypoint x="610" y="218" />
+        <omgdi:waypoint x="670" y="218" />
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="edge_flow_first_rejected" bpmnElement="flow_first_rejected">
+        <omgdi:waypoint x="590" y="238" />
+        <omgdi:waypoint x="590" y="400" />
+        <omgdi:waypoint x="770" y="400" />
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="edge_flow_first_final" bpmnElement="flow_first_final">
+        <omgdi:waypoint x="690" y="198" />
+        <omgdi:waypoint x="690" y="100" />
+        <omgdi:waypoint x="870" y="100" />
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="edge_flow_first_normal" bpmnElement="flow_first_normal">
+        <omgdi:waypoint x="710" y="218" />
+        <omgdi:waypoint x="770" y="218" />
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="edge_flow_second_action" bpmnElement="flow_second_action">
+        <omgdi:waypoint x="930" y="218" />
+        <omgdi:waypoint x="980" y="218" />
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="edge_flow_second_approved" bpmnElement="flow_second_approved">
+        <omgdi:waypoint x="1020" y="218" />
+        <omgdi:waypoint x="1080" y="218" />
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="edge_flow_second_rejected" bpmnElement="flow_second_rejected">
+        <omgdi:waypoint x="1000" y="238" />
+        <omgdi:waypoint x="1000" y="400" />
+        <omgdi:waypoint x="950" y="400" />
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="edge_flow_second_final" bpmnElement="flow_second_final">
+        <omgdi:waypoint x="1100" y="198" />
+        <omgdi:waypoint x="1100" y="100" />
+        <omgdi:waypoint x="1030" y="100" />
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="edge_flow_second_normal" bpmnElement="flow_second_normal">
+        <omgdi:waypoint x="1120" y="218" />
+        <omgdi:waypoint x="1180" y="218" />
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="edge_flow_third_complete" bpmnElement="flow_third_complete">
+        <omgdi:waypoint x="1320" y="218" />
+        <omgdi:waypoint x="1380" y="218" />
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="edge_flow_skip_complete" bpmnElement="flow_skip_complete">
+        <omgdi:waypoint x="1030" y="100" />
+        <omgdi:waypoint x="1450" y="100" />
+        <omgdi:waypoint x="1450" y="178" />
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="edge_flow_complete_end" bpmnElement="flow_complete_end">
+        <omgdi:waypoint x="1520" y="218" />
+        <omgdi:waypoint x="1580" y="218" />
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="edge_flow_reject_end" bpmnElement="flow_reject_end">
+        <omgdi:waypoint x="890" y="400" />
+        <omgdi:waypoint x="950" y="400" />
+      </bpmndi:BPMNEdge>
+
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+
+</definitions>

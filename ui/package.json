@@ -1,0 +1,37 @@
+{
+  "name": "openplatform-v3-ui",
+  "version": "3.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --port 25174",
+    "build": "vue-tsc && vite build",
+    "preview": "vite preview --port 19173"
+  },
+  "dependencies": {
+    "@fullcalendar/core": "^6.1.20",
+    "@fullcalendar/daygrid": "^6.1.20",
+    "@fullcalendar/interaction": "^6.1.20",
+    "@fullcalendar/timegrid": "^6.1.20",
+    "@fullcalendar/vue3": "^6.1.20",
+    "@primevue/themes": "^4.3.0",
+    "@tabler/icons-vue": "^3.41.1",
+    "@tabler/icons-webfont": "^3.36.0",
+    "axios": "^1.15.0",
+    "dayjs": "^1.11.0",
+    "keycloak-js": "^24.0.0",
+    "livekit-client": "^2.18.1",
+    "md-editor-v3": "^6.4.1",
+    "pinia": "^3.0.0",
+    "primeicons": "^7.0.0",
+    "primevue": "^4.3.0",
+    "vue": "^3.5.13",
+    "vue-router": "^4.5.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^5.2.0",
+    "typescript": "~5.7.0",
+    "vite": "^6.1.0",
+    "vue-tsc": "^2.2.0"
+  }
+}

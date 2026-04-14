@@ -1,0 +1,47 @@
+# =============================================================================
+# Prometheus 설정
+# - global scrape interval: 15s
+# - 대상: backend-core / backend-bff (Spring Boot Actuator), traefik 메트릭
+# =============================================================================
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    cluster: openplatform_v3
+    env: dev
+
+scrape_configs:
+  # ---------------------------------------------------------------------------
+  # backend-core — Spring Boot Actuator Prometheus 엔드포인트
+  # ---------------------------------------------------------------------------
+  - job_name: backend-core
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets:
+          - backend-core:8080
+        labels:
+          service: backend-core
+
+  # ---------------------------------------------------------------------------
+  # backend-bff — Spring Boot Actuator Prometheus 엔드포인트
+  # ---------------------------------------------------------------------------
+  - job_name: backend-bff
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets:
+          - backend-bff:8080
+        labels:
+          service: backend-bff
+
+  # ---------------------------------------------------------------------------
+  # traefik — 호스트 게이트웨이 경유 (traefik 은 별도 traefik-net 사용)
+  # 주의: 현재 traefik.yml 에 metrics.prometheus 미활성 — 활성 시 200 예상
+  # ---------------------------------------------------------------------------
+  - job_name: traefik
+    metrics_path: /metrics
+    static_configs:
+      - targets:
+          - host.docker.internal:18082
+        labels:
+          service: traefik

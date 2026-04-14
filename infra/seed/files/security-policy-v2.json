@@ -1,0 +1,1 @@
+{"name":"security-policy-v2","version":"2.0","rules":["VPN 이중인증 의무","비밀번호 90일 주기 변경","공유폴더 만료일 설정"]}

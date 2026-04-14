@@ -1,0 +1,88 @@
+# Healthcheck override (Ops-1) — 최소 프로세스 존재 체크 (이미지 호환성 우선)
+# 사용: docker compose -f infra/docker-compose.yml -f infra/docker-compose.healthcheck.yml up -d
+
+services:
+  keycloak:
+    environment:
+      KC_HEALTH_ENABLED: "true"
+    healthcheck:
+      # Keycloak quay.io/keycloak/keycloak:24 이미지는 curl/wget/pgrep/ps 미포함.
+      # PID 1 이 Java keycloak 프로세스라는 사실만 검증.
+      test: ["CMD-SHELL", "cat /proc/1/cmdline | grep -q keycloak || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  mongo:
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 20s
+      timeout: 10s
+      retries: 10
+      start_period: 20s
+
+  rocketchat:
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"require('http').get('http://localhost:3000/api/info',r=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))\""]
+      interval: 20s
+      timeout: 15s
+      retries: 15
+      start_period: 90s
+
+  wikijs:
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"require('http').get('http://localhost:3000/',r=>process.exit(r.statusCode<500?0:1)).on('error',()=>process.exit(1))\""]
+      interval: 20s
+      timeout: 10s
+      retries: 15
+      start_period: 60s
+
+  stalwart:
+    # stalwart 이미지는 pgrep/ps 없음 → /proc 으로 PID 1 의 cmdline 검사
+    healthcheck:
+      test: ["CMD-SHELL", "cat /proc/1/cmdline | grep -q stalwart || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  openldap:
+    healthcheck:
+      test: ["CMD-SHELL", "pgrep slapd || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+  livekit:
+    healthcheck:
+      test: ["CMD-SHELL", "pgrep livekit-server || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 15s
+
+  backend-core:
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/actuator/health 2>&1 | grep -q UP || exit 1"]
+      interval: 20s
+      timeout: 10s
+      retries: 20
+      start_period: 60s
+
+  backend-bff:
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/actuator/health 2>&1 | grep -q UP || exit 1"]
+      interval: 20s
+      timeout: 10s
+      retries: 20
+      start_period: 45s
+
+  ui-frontend:
+    healthcheck:
+      test: ["CMD-SHELL", "nginx -t 2>&1 | grep -q successful || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 15s

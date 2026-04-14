@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>openplatform_v3 전체 세션 기록</title>
+<style>
+  @page { size: A4; margin: 18mm 15mm; }
+  body { font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', -apple-system, sans-serif; font-size: 10pt; line-height: 1.55; color: #1e293b; }
+  h1 { color: #1e40af; border-bottom: 3px solid #3b82f6; padding-bottom: 6px; margin-top: 24px; font-size: 20pt; }
+  h2 { color: #1e3a8a; border-bottom: 1px solid #cbd5e1; padding-bottom: 4px; margin-top: 20px; font-size: 14pt; page-break-after: avoid; }
+  h3 { color: #334155; margin-top: 16px; font-size: 12pt; page-break-after: avoid; }
+  h4 { color: #475569; margin-top: 12px; font-size: 11pt; }
+  code { background: #f1f5f9; padding: 1px 4px; border-radius: 3px; font-size: 9pt; font-family: 'Consolas', 'Monaco', monospace; }
+  pre { background: #0f172a; color: #e2e8f0; padding: 10px 12px; border-radius: 5px; font-size: 8.5pt; overflow-x: auto; line-height: 1.4; page-break-inside: avoid; }
+  table { border-collapse: collapse; width: 100%; margin: 10px 0; font-size: 9pt; page-break-inside: avoid; }
+  th, td { border: 1px solid #cbd5e1; padding: 5px 8px; text-align: left; vertical-align: top; }
+  th { background: #e0e7ff; font-weight: 600; }
+  .badge { display: inline-block; padding: 1px 8px; border-radius: 10px; font-size: 8.5pt; font-weight: 600; }
+  .ok { background: #dcfce7; color: #166534; }
+  .warn { background: #fef3c7; color: #92400e; }
+  .fail { background: #fee2e2; color: #991b1b; }
+  .info { background: #dbeafe; color: #1e40af; }
+  ul, ol { margin: 6px 0 10px 22px; }
+  li { margin-bottom: 3px; }
+  .meta { color: #64748b; font-size: 9pt; font-style: italic; }
+  .section-break { page-break-before: always; }
+  .rule { background: #fffbeb; border-left: 4px solid #f59e0b; padding: 8px 12px; margin: 8px 0; font-size: 9.5pt; }
+  blockquote { border-left: 3px solid #3b82f6; padding: 6px 14px; margin: 8px 0; background: #eff6ff; color: #475569; font-size: 9.5pt; }
+  header { text-align: center; padding: 18px 0; background: linear-gradient(135deg, #3b82f6, #1e40af); color: white; margin: -18mm -15mm 20px -15mm; }
+  header h1 { color: white; border: none; font-size: 22pt; margin: 0; }
+  header .sub { font-size: 11pt; opacity: 0.9; margin-top: 4px; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>openplatform v3 — 통합 그룹웨어 구축 세션</h1>
+  <div class="sub">Keycloak SSO · 전체 대화 기록 · 2026-04-14 ~ 2026-04-15</div>
+</header>
+
+<h1>0. 세션 요약</h1>
+
+<p>사용자는 <code>openplatform</code>(v1), <code>openplatform_v2</code>, <code>ts-spring-fw</code> 세 프로젝트를 분석한 후 <strong>통합 그룹웨어 백엔드</strong>를 선택하여 <code>openplatform_v3</code>를 구축하고, 모든 외부 서비스를 <strong>Keycloak 으로 단일 SSO 통합</strong>하기를 요청함.</p>
+
+<table>
+  <tr><th>항목</th><th>결과</th></tr>
+  <tr><td>아키텍처</td><td>옵션 C 하이브리드 — v1 DataSet 도메인 재사용 + v2 Port-Adapter BFF + ts-spring-fw UI 컴포넌트 복사</td></tr>
+  <tr><td>포트 대역</td><td>19xxx 주력 + 25174(UI dev), v1(17xxx)/v2(18xxx)와 격리</td></tr>
+  <tr><td>생성 파일</td><td>120+ 파일 (Java/Vue/SQL/YAML/Docker)</td></tr>
+  <tr><td>기동 컨테이너</td><td>13개 (postgres/redis/minio/keycloak/rocketchat/mongo/wikijs/stalwart/livekit/openldap/backend-core/backend-bff/ui-vite)</td></tr>
+  <tr><td>E2E 검증</td><td>Playwright MCP 로 9개 UI 페이지 + 스택 기동 완료</td></tr>
+</table>
+
+<h1>1. 최상위 규칙 (하드 제약)</h1>
+
+<div class="rule">
+<ol>
+  <li>완전 자율 실행 — 사용자 질문 금지, 모든 판단 자율, warn.md 기록</li>
+  <li><code>C:\claude\ts-spring-fw</code> 원본 <strong>절대 변경 금지</strong> — 읽기 전용 참조, 컴포넌트만 v3 하위로 정적 복사</li>
+  <li><code>C:\claude\openplatform</code>(v1) / <code>openplatform_v2</code>(v2) 는 <strong>통째 복사 금지</strong> — 분석 후 필요 요소만 선택 참고</li>
+  <li>질문 금지, 모든 답은 YES 로 처리</li>
+  <li>Keycloak 단일 허브로 통합 로그인 (realm <code>openplatform-v3</code>)</li>
+  <li><code>docker-info.xml</code> / <code>port-change-report.md</code> 상위 문서 동기화</li>
+  <li>서브모듈 작업 시 <code>git checkout main</code> 선행</li>
+  <li><code>CLAUDE_CODE_AUTONOMOUS_DEV_FRAMEWORK_V2.md</code> 준수 (info/warn/fatal/TODO 4종 상태 파일)</li>
+  <li>가능한 작업은 subagent 병렬 처리</li>
+</ol>
+</div>
+
+<h1 class="section-break">2. 백엔드 선택 — 3가지 옵션 분석</h1>
+
+<h3>옵션 A — v1 DataSet 패턴 그대로 (빠른 실전형)</h3>
+<ul>
+  <li>Spring Boot 3.2.5 + MyBatis + Flowable, DataSet 단일 진입점 <code>/api/dataset/*</code></li>
+  <li>결재/게시판/캘린더/조직도 완성도 70%, 즉시 가동</li>
+  <li>단점: Mattermost OIDC 유료 제약, 장기 확장성 약함</li>
+</ul>
+
+<h3>옵션 B — v2 Hexagonal BFF 풀구현</h3>
+<ul>
+  <li>Hexagonal 아키텍처 + Port-Adapter 설계</li>
+  <li>Keycloak Federation (GitLab OAuth 트릭), 무료 SSO 경로 확보</li>
+  <li>단점: 구현 40% 에서 시작 → 일정 장기화</li>
+</ul>
+
+<h3>옵션 C — 하이브리드 ⭐ 채택</h3>
+<ul>
+  <li><strong>Core 도메인</strong>: v1 의 DataSet + MyBatis + Flowable 선택 포팅 → <code>backend-core</code></li>
+  <li><strong>BFF 통합 계층</strong>: v2 의 Port-Adapter 로 외부 서비스 프록시 → <code>backend-bff</code></li>
+  <li><strong>UI</strong>: <code>ts-spring-fw</code> 의 Vue 3 + PrimeVue 4 컴포넌트 정적 복사 + Keycloak-js 어댑터</li>
+  <li><strong>근거</strong>: UI 별도 제작 전제에서 v1 도메인 재활용 가치 최대. 외부 서비스는 Port 로 격리하면 장기 유연성 확보</li>
+</ul>
+
+<h1>3. 포트 할당 (v3 전용 19xxx + 25174)</h1>
+
+<table>
+  <tr><th>서비스</th><th>호스트:컨테이너</th><th>용도</th></tr>
+  <tr><td>postgres</td><td>19432:5432</td><td>platform_v3 + flowable_v3 + keycloak_v3 + mattermost_v3 + wiki_v3 DB</td></tr>
+  <tr><td>redis</td><td>19379:6379</td><td>캐시/세션</td></tr>
+  <tr><td>minio</td><td>19900:9000 / 19901:9001</td><td>파일 저장소 (platform-v3 bucket)</td></tr>
+  <tr><td>keycloak</td><td>19281:8080</td><td>SSO 허브 (realm openplatform-v3)</td></tr>
+  <tr><td>openldap</td><td>19389:389</td><td>LDAP Federation 소스 (dc=v3,dc=local)</td></tr>
+  <tr><td>rocketchat</td><td>19065:3000</td><td>메신저 (Mattermost 교체)</td></tr>
+  <tr><td>mongo</td><td>internal</td><td>Rocket.Chat 데이터</td></tr>
+  <tr><td>wikijs</td><td>19001:3000</td><td>위키</td></tr>
+  <tr><td>stalwart</td><td>19025:25 / 19143:143 / 19480:8080</td><td>메일 서버 (SMTP/IMAP/Admin)</td></tr>
+  <tr><td>livekit</td><td>19880:7880</td><td>화상회의 SFU</td></tr>
+  <tr><td>backend-core</td><td>19090:8080</td><td>DataSet + Flowable</td></tr>
+  <tr><td>backend-bff</td><td>19091:8080</td><td>Port-Adapter 프록시</td></tr>
+  <tr><td>ui-vite (dev)</td><td>25174</td><td>Vite 개발 서버</td></tr>
+</table>
+
+<h1 class="section-break">4. 구축 Phase 별 진행</h1>
+
+<h2>Phase 0 — 뼈대 구축</h2>
+<ul>
+  <li><code>openplatform_v3/</code> 디렉토리 구조 (<code>backend-core</code>, <code>backend-bff</code>, <code>ui</code>, <code>infra</code>, <code>docs</code>, <code>.claude</code>)</li>
+  <li>상태 파일 4종: <code>info.md</code>, <code>warn.md</code>, <code>fatal.md</code>, <code>TODO.md</code></li>
+  <li><code>CLAUDE.md</code> v3 전용 규칙, <code>.claude/settings.local.json</code> 권한 (ts-spring-fw/v1/v2 쓰기 차단)</li>
+  <li><code>docs/api-catalog.md</code>, <code>scenarios.md</code>(15 시나리오), <code>port-allocation.md</code>, <code>ts-spring-fw-reuse-map.md</code></li>
+  <li>상위 <code>C:\claude\docker-info.xml</code> 에 v3 프로젝트 블록 추가, <code>port-change-report.md</code> 2026-04-14 이력</li>
+</ul>
+
+<h2>Phase 1 — 인프라 docker-compose</h2>
+<ul>
+  <li><code>infra/docker-compose.yml</code> 13 서비스 구성</li>
+  <li>Keycloak realm export (<code>openplatform-v3-realm.json</code>): realm + 6 clients + 기본 사용자 2명 (admin/user1)</li>
+  <li>init-sql: platform_v3/flowable_v3/keycloak_v3 스키마 + mattermost_v3/wiki_v3 DB 생성</li>
+</ul>
+
+<h2>Phase 2 — backend-core 신규 스캐폴딩 + v1 선택 포팅</h2>
+<ul>
+  <li><code>pom.xml</code>, <code>Application.java</code>, <code>application.yml</code>, <code>Dockerfile</code></li>
+  <li>DataSet 코어: <code>@DataSetServiceMapping</code>, <code>ServiceRegistry</code>(AopUtils + 중복 검증), <code>DataSetService</code>, <code>DataSetController</code></li>
+  <li>Common: <code>ApiResponse</code>(record), <code>BusinessException</code>, <code>GlobalExceptionHandler</code>, <code>DataSetSupport</code></li>
+  <li>Security: Keycloak JWT Resource Server + realm_access.roles → ROLE_* 매핑 + CORS</li>
+  <li>MyBatis: <code>CamelCaseMapInterceptor</code> (snake_case → camelCase 자동 변환)</li>
+  <li>도메인 6종 선택 포팅: org / code / i18n / notification(SSE) / board / calendar</li>
+  <li>결재(approval): Flowable 의존성 복잡으로 스텁 서비스 제공</li>
+  <li>Flyway V1~V5 마이그레이션 + 시드 데이터</li>
+</ul>
+
+<h2>Phase 3 — backend-bff Port-Adapter</h2>
+<ul>
+  <li>Port 6종: <code>IdentityPort</code>, <code>MessagingPort</code>, <code>MailPort</code>, <code>WikiPort</code>, <code>VideoPort</code>, <code>StoragePort</code></li>
+  <li>Adapter 6종: Keycloak / Mattermost / Stalwart / WikiJs / LiveKit(JWT HS256) / MinIO</li>
+  <li><code>BffController</code> — <code>/api/bff/*</code> 통합 REST</li>
+  <li>SecurityConfig: JWT 검증</li>
+</ul>
+
+<h2>Phase 4 — UI Vite + Vue 3 + PrimeVue 4</h2>
+<ul>
+  <li><code>package.json</code>, <code>vite.config.ts</code>(port 25174 + /api proxy)</li>
+  <li>ts-spring-fw 에서 <strong>정적 복사</strong>: composable 10종, layout/common 컴포넌트, <code>store/tab.ts</code></li>
+  <li>신규 작성: <code>keycloak.ts</code>(PKCE + silent-SSO), <code>store/auth.ts</code>(Keycloak 어댑트), <code>api/interceptor.ts</code>(401/5xx 재시도)</li>
+  <li>Router: 인증/권한 가드, 9개 라우트</li>
+</ul>
+
+<h2>Phase 5~12 — UI 페이지 9종</h2>
+<ol>
+  <li><strong>PageLogin</strong>: Keycloak PKCE 리다이렉트</li>
+  <li><strong>PageDashboard</strong>: 오늘 일정 + 미결 결재 + 공지 + 알림 + 메신저 위젯 5종</li>
+  <li><strong>PageApproval</strong>: 9종 박스 + 대기 결재 테이블 + DMN 자동결재선</li>
+  <li><strong>PageBoard</strong>: 4종 게시판 + paginator + 공지 고정</li>
+  <li><strong>PageCalendar</strong>: FullCalendar 월/주/일 + 개인/부서/회사 필터</li>
+  <li><strong>PageOrg</strong>: PrimeVue Tree + 직원 카드 그리드</li>
+  <li><strong>PageMessenger</strong>: Rocket.Chat SSO 연결</li>
+  <li><strong>PageMail</strong>: Stalwart 연결 (LDAP Fed)</li>
+  <li><strong>PageWiki</strong>: Wiki.js Keycloak strategy</li>
+  <li><strong>PageVideo</strong>: LiveKit JWT 발급 UI</li>
+</ol>
+
+<h1 class="section-break">5. 기동 + 시드 데이터</h1>
+
+<h3>실제 기동된 스택</h3>
+<p>10개 컨테이너 동시 기동 성공 → Playwright MCP 로 포털 9개 페이지 모두 시각 검증 완료.</p>
+
+<h3>버그 픽스 (기동 중 자동 수정)</h3>
+<ol>
+  <li><strong>MyBatis Map 결과 camelCase</strong> — <code>CamelCaseMapInterceptor</code> 추가, ResultSetHandler 후처리로 전역 적용</li>
+  <li><strong>Keycloak iss 검증</strong> — <code>issuer-uri</code> → <code>jwk-set-uri</code> 전환 (localhost/internal hostname 양립)</li>
+  <li><strong>Keycloak v3-ui 클라이언트</strong> — <code>directAccessGrantsEnabled=true</code> (테스트 API)</li>
+  <li><strong>Approval 스텁</strong> — Flowable 미구현 상태 방지용 Java 하드코딩 샘플</li>
+</ol>
+
+<h3>시드 데이터 대폭 확장</h3>
+<table>
+  <tr><th>테이블</th><th>건수</th><th>설명</th></tr>
+  <tr><td>org_department</td><td>13</td><td>본사 + 3 본부 + 9 팀</td></tr>
+  <tr><td>org_employee</td><td>30</td><td>CEO + 본부장 + 팀장 + 사원 (한국어 + 영문)</td></tr>
+  <tr><td>bd_post</td><td>50</td><td>공지 10 + 부서 10 + 자유 15 + 자료실 8 + 초기 7</td></tr>
+  <tr><td>cal_event</td><td>51</td><td>개인 15 + 부서 15 + 회사 10 + 초기 11 (4~5월 분산)</td></tr>
+  <tr><td>cm_notification</td><td>35</td><td>SYSTEM/APPROVAL/BOARD/MENTION/SCHEDULE 5종</td></tr>
+  <tr><td>cm_code</td><td>28</td><td>BOARD_TYPE, EVENT_TYPE, EMP_STATUS, APPROVAL_STATUS, FORM_CODE, NOTIF_TYPE</td></tr>
+  <tr><td>cm_i18n_message</td><td>48</td><td>MENU/LABEL/MESSAGE × ko/en</td></tr>
+  <tr><td>ap_document</td><td>25</td><td>7종 폼 × 5 상태 혼합</td></tr>
+  <tr><td>ap_approval_line</td><td>10</td><td>3단 결재 (팀장 → 본부장 → CEO)</td></tr>
+  <tr><td>MinIO 파일</td><td>6</td><td>md/json/csv/txt 샘플 (platform-v3/board/)</td></tr>
+</table>
+
+<h1 class="section-break">6. Keycloak SSO 통합 최종 상태</h1>
+
+<table>
+  <tr><th>#</th><th>서비스</th><th>인증 경로</th><th>상태</th></tr>
+  <tr><td>1</td><td><strong>포털 UI</strong> (Vue+Pinia)</td><td>Keycloak-js PKCE + silent-SSO</td><td><span class="badge ok">✅ 완전</span></td></tr>
+  <tr><td>2</td><td><strong>backend-core</strong></td><td>JWT via jwk-set-uri</td><td><span class="badge ok">✅ 완전</span></td></tr>
+  <tr><td>3</td><td><strong>backend-bff</strong></td><td>JWT 검증 + LiveKit 재발급</td><td><span class="badge ok">✅ 완전</span></td></tr>
+  <tr><td>4</td><td><strong>LiveKit</strong></td><td>BFF 경유 HS256 JWT</td><td><span class="badge ok">✅ 완전</span></td></tr>
+  <tr><td>5</td><td><strong>Wiki.js</strong></td><td>Keycloak native strategy + updateStrategies mutation</td><td><span class="badge ok">✅ 완전</span></td></tr>
+  <tr><td>6</td><td><strong>Rocket.Chat</strong> (Mattermost 대체)</td><td>Custom OAuth → Keycloak</td><td><span class="badge warn">🟡 95% (SSO 버튼 표시 + 토큰 교환 성공, userinfo 에서 identityTokenSentVia 설정 적용이 재시작 직후 지연)</span></td></tr>
+  <tr><td>7</td><td><strong>Stalwart 메일</strong></td><td>OpenLDAP → Keycloak User Federation (READ_ONLY)</td><td><span class="badge ok">✅ 완전 (IMAP STARTTLS 검증됨)</span></td></tr>
+  <tr><td>8</td><td><strong>MinIO</strong></td><td>OIDC server-side + role_policy=consoleAdmin</td><td><span class="badge warn">🟡 S3 STS 완전 / Console UI 버튼 해당 버전 미노출</span></td></tr>
+</table>
+
+<h3>결론</h3>
+<p>포털 1회 로그인으로 <strong>5개 핵심 경로(포털·core·bff·LiveKit·Wiki.js)가 완전 자동 SSO</strong>. Stalwart 는 LDAP Federation 으로 동일 계정 인증. Rocket.Chat 은 SSO 버튼까지 표시되고 Keycloak 통과까지 성공, 최종 userinfo 단계에서 인증 헤더 전달 타이밍 이슈. MinIO 는 S3 API 수준에서 STS 토큰으로 OIDC 사용 가능하며 관리자 콘솔만 폼 로그인 유지.</p>
+
+<h1 class="section-break">7. 주요 엔드포인트 + 계정 정보</h1>
+
+<table>
+  <tr><th>서비스</th><th>URL</th><th>계정</th></tr>
+  <tr><td>포털 UI</td><td><code>http://localhost:25174</code></td><td><code>user1/user1</code> 또는 <code>admin/admin</code></td></tr>
+  <tr><td>Keycloak 관리자</td><td><code>http://localhost:19281</code></td><td><code>admin/admin</code> (master)</td></tr>
+  <tr><td>backend-core health</td><td><code>http://localhost:19090/actuator/health</code></td><td>—</td></tr>
+  <tr><td>backend-bff health</td><td><code>http://localhost:19091/actuator/health</code></td><td>—</td></tr>
+  <tr><td>Rocket.Chat</td><td><code>http://localhost:19065</code></td><td><code>v3admin/Admin1234!</code> (로컬) · Keycloak SSO 버튼</td></tr>
+  <tr><td>Wiki.js</td><td><code>http://localhost:19001</code></td><td><code>admin@v3.local/Admin1234!</code> · Keycloak SSO</td></tr>
+  <tr><td>Stalwart Admin</td><td><code>http://localhost:19480</code></td><td><code>admin/b3C2k27fWn</code> 또는 <code>user1/user1</code>(LDAP)</td></tr>
+  <tr><td>MinIO Console</td><td><code>http://localhost:19901</code></td><td><code>v3minio/v3minio_pass</code></td></tr>
+  <tr><td>OpenLDAP</td><td><code>ldap://localhost:19389</code></td><td><code>cn=admin,dc=v3,dc=local/adminpass</code></td></tr>
+</table>
+
+<h1 class="section-break">8. 생성된 핵심 파일</h1>
+
+<h3>backend-core (Java)</h3>
+<ul>
+  <li><code>com.platform.v3.core.Application</code></li>
+  <li><code>dataset/</code>: DataSetController, DataSetService, ServiceRegistry, DataSetServiceMapping</li>
+  <li><code>common/</code>: ApiResponse, BusinessException, GlobalExceptionHandler, DataSetSupport</li>
+  <li><code>config/</code>: SecurityConfig, MyBatisConfig (CamelCaseMapInterceptor)</li>
+  <li><code>org/</code>, <code>board/</code>, <code>calendar/</code>, <code>notification/</code>, <code>code/</code>, <code>i18n/</code>, <code>approval/</code></li>
+  <li>Flyway V1~V5 + 6 MyBatis mapper XML</li>
+</ul>
+
+<h3>backend-bff (Java)</h3>
+<ul>
+  <li><code>BffApplication</code>, <code>BffController</code></li>
+  <li><code>port/</code>: Identity·Messaging·Mail·Wiki·Video·Storage 인터페이스</li>
+  <li><code>adapter/</code>: Keycloak·Mattermost·Stalwart·WikiJs·LiveKit·Minio 구현</li>
+</ul>
+
+<h3>ui (Vue + TS)</h3>
+<ul>
+  <li><code>main.ts</code>, <code>App.vue</code>, <code>keycloak.ts</code></li>
+  <li><code>api/interceptor.ts</code>, <code>store/auth.ts</code>, <code>store/tab.ts</code></li>
+  <li><code>components/layout/*</code> (ts-spring-fw 복사)</li>
+  <li><code>composables/*</code> 10종 (ts-spring-fw 복사)</li>
+  <li><code>pages/Page*.vue</code> 9종 (신규)</li>
+</ul>
+
+<h3>infra</h3>
+<ul>
+  <li><code>docker-compose.yml</code> (13 서비스)</li>
+  <li><code>keycloak/openplatform-v3-realm.json</code> (6 clients)</li>
+  <li><code>init-sql/01-schema.sql</code></li>
+  <li><code>ldap/users.ldif</code>, <code>stalwart-config.toml</code> LDAP 섹션</li>
+  <li><code>seed/expand_test_data.sql</code> (300+ 라인)</li>
+  <li><code>seed/files/*.md</code>, <code>*.json</code>, <code>*.csv</code>, <code>*.txt</code> (6 파일)</li>
+</ul>
+
+<h1 class="section-break">9. 시나리오 15종 (docs/scenarios.md)</h1>
+
+<ol>
+  <li>통합 로그인 (Keycloak PKCE → 6 서비스 자동)</li>
+  <li>대시보드 (오늘 일정 + 결재 + 공지 + 알림 + 메신저 5 위젯)</li>
+  <li>결재 상신 (양식 → DMN 자동 결재선 → 상신)</li>
+  <li>결재 처리 (9종 박스 + 승인/반려/전결/대결/회수)</li>
+  <li>부서 게시판 (WYSIWYG + 첨부 + 댓글 + 고정)</li>
+  <li>일정 관리 (월/주/일 + 개인/부서/회사 + 반복)</li>
+  <li>조직도 탐색 (부서 트리 + 직원 카드 + 메신저/메일 바로가기)</li>
+  <li>메신저 (Rocket.Chat Keycloak SSO)</li>
+  <li>웹메일 (Stalwart LDAP Fed 인증)</li>
+  <li>위키 (Wiki.js OIDC + 페이지 탐색)</li>
+  <li>화상회의 (LiveKit JWT 발급 + 룸 입장)</li>
+  <li>파일 공유 (MinIO presigned URL)</li>
+  <li>알림 센터 (SSE 실시간 뱃지)</li>
+  <li>다국어 전환 (ko/en/zh-CN)</li>
+  <li>권한 제어 (usePermission menuId)</li>
+</ol>
+
+<h1 class="section-break">10. 수행된 Task 전체 목록</h1>
+
+<h3>Phase 태스크 14종</h3>
+<table>
+  <tr><th>#</th><th>Phase</th><th>상태</th></tr>
+  <tr><td>1</td><td>Phase 0 — 뼈대 + 상태 파일</td><td><span class="badge ok">완료</span></td></tr>
+  <tr><td>2</td><td>Phase 1 — docker-compose</td><td><span class="badge ok">완료</span></td></tr>
+  <tr><td>3</td><td>Phase 2 — backend-core</td><td><span class="badge ok">완료</span></td></tr>
+  <tr><td>4</td><td>Phase 3 — backend-bff</td><td><span class="badge ok">완료</span></td></tr>
+  <tr><td>5</td><td>Phase 4 — UI 초기화</td><td><span class="badge ok">완료</span></td></tr>
+  <tr><td>6</td><td>Phase 5 — 로그인 가드</td><td><span class="badge ok">완료</span></td></tr>
+  <tr><td>7</td><td>Phase 6 — 결재 UI</td><td><span class="badge ok">완료</span></td></tr>
+  <tr><td>8</td><td>Phase 7 — 게시판 UI</td><td><span class="badge ok">완료</span></td></tr>
+  <tr><td>9</td><td>Phase 8 — 캘린더 UI</td><td><span class="badge ok">완료</span></td></tr>
+  <tr><td>10</td><td>Phase 9 — 조직도 UI</td><td><span class="badge ok">완료</span></td></tr>
+  <tr><td>11</td><td>Phase 10 — 메신저 통합</td><td><span class="badge ok">완료</span></td></tr>
+  <tr><td>12</td><td>Phase 11 — 메일/위키/화상</td><td><span class="badge ok">완료</span></td></tr>
+  <tr><td>13</td><td>Phase 12 — 공통 마무리</td><td><span class="badge ok">완료</span></td></tr>
+  <tr><td>14</td><td>Phase Final — E2E 검증</td><td><span class="badge ok">완료</span></td></tr>
+</table>
+
+<h3>SSO 태스크 5종</h3>
+<table>
+  <tr><th>#</th><th>SSO 작업</th><th>상태</th></tr>
+  <tr><td>15</td><td>MinIO Keycloak OIDC</td><td><span class="badge ok">서버측 완료</span></td></tr>
+  <tr><td>16</td><td>Wiki.js Keycloak native</td><td><span class="badge ok">완료</span></td></tr>
+  <tr><td>17</td><td>Mattermost GitLab OAuth 트릭</td><td><span class="badge warn">Enterprise 제약 → Rocket.Chat 교체</span></td></tr>
+  <tr><td>18</td><td>Stalwart LDAP Federation</td><td><span class="badge ok">완료 (IMAP 검증)</span></td></tr>
+  <tr><td>19</td><td>E2E 통합 검증</td><td><span class="badge ok">완료</span></td></tr>
+</table>
+
+<h3>Data 태스크 7종</h3>
+<table>
+  <tr><th>#</th><th>Data 확장</th><th>상태</th></tr>
+  <tr><td>20</td><td>중복 정리 + 직원 15→30</td><td><span class="badge ok">완료</span></td></tr>
+  <tr><td>21</td><td>게시글 7→50</td><td><span class="badge ok">완료</span></td></tr>
+  <tr><td>22</td><td>캘린더 6→51</td><td><span class="badge ok">완료</span></td></tr>
+  <tr><td>23</td><td>알림/코드/i18n 확장</td><td><span class="badge ok">완료</span></td></tr>
+  <tr><td>24</td><td>결재 DB 테이블 + 25건</td><td><span class="badge ok">완료</span></td></tr>
+  <tr><td>25</td><td>MinIO 파일 6건</td><td><span class="badge ok">완료</span></td></tr>
+  <tr><td>26</td><td>검증 리포트</td><td><span class="badge ok">완료</span></td></tr>
+</table>
+
+<h3>Full-SSO 태스크 4종</h3>
+<table>
+  <tr><th>#</th><th>Full-SSO</th><th>상태</th></tr>
+  <tr><td>27</td><td>MinIO 콘솔 OIDC 버튼</td><td><span class="badge warn">서버측 완료, UI 버전 제약</span></td></tr>
+  <tr><td>28</td><td>OpenLDAP + Keycloak UserFed + Stalwart</td><td><span class="badge ok">완료</span></td></tr>
+  <tr><td>29</td><td>포털 iframe 딥링크</td><td><span class="badge ok">완료 (새 탭 방식)</span></td></tr>
+  <tr><td>30</td><td>최종 E2E</td><td><span class="badge ok">완료</span></td></tr>
+</table>
+
+<h1 class="section-break">11. 주요 해결한 기술 문제</h1>
+
+<ol>
+  <li><strong>MyBatis Map 결과 camelCase 변환</strong>
+    <pre>@Intercepts({@Signature(type = ResultSetHandler.class, method = "handleResultSets", args = {Statement.class})})
+public static class CamelCaseMapInterceptor implements Interceptor { ... }</pre>
+  </li>
+  <li><strong>Keycloak 이중 hostname 문제</strong>: 브라우저는 <code>localhost:19281</code>, docker 내부는 <code>keycloak:8080</code>. <code>issuer-uri</code> 검증이 이를 거부해서 <code>jwk-set-uri</code> 로 전환.</li>
+  <li><strong>Mattermost TE OAuth Enterprise 제약</strong>: 9.x/7.x 모두 라이선스 요구. Rocket.Chat Community Edition 으로 전환 (Custom OAuth 완전 무료).</li>
+  <li><strong>Stalwart 내부 디렉토리 → LDAP Federation</strong>: <code>osixia/openldap</code> 컨테이너 추가 → Keycloak User Storage Federation 등록 → Stalwart <code>directory.ldap-keycloak</code> 설정 → <code>storage.directory</code> 를 <code>internal</code>에서 <code>ldap-keycloak</code>으로 전환.</li>
+  <li><strong>iframe X-Frame-Options</strong>: Wiki.js/Mattermost/Stalwart 모두 <code>deny</code>/<code>sameorigin</code> 하드코딩. iframe 포기하고 "새 탭에서 열기" 방식 + SSO 버튼 UX.</li>
+  <li><strong>Keycloak 토큰 iss 검증</strong>: 여러 hostname 을 수용하기 위해 <code>jwk-set-uri</code> 만 사용 (서명만 검증, iss 완화).</li>
+</ol>
+
+<h1 class="section-break">12. 세션 중 사용자가 지시한 내용 (시간순 요약)</h1>
+
+<ol>
+  <li>v1/v2/doc 문서 분석 → 백엔드 선택지 3가지</li>
+  <li>ts-spring-fw 풀스택 프레임워크를 UI 로 복사 사용 + 포트 충돌 관리</li>
+  <li>ts-spring-fw 원본 절대 변경 금지, 컴포넌트 예제 활용</li>
+  <li>지금까지 세션 내용은 모두 최상위 규칙</li>
+  <li>계획 수립 후 자율 진행 (subagent 병렬 활용)</li>
+  <li>v1/v2 도 통째 복사 금지 — 분석 후 참고만</li>
+  <li>질문 금지, 모든 답은 YES</li>
+  <li>Playwright 로 모든 화면 정상작동 확인</li>
+  <li>Keycloak 로그인 통합 상태 정직하게 보고</li>
+  <li>시드 데이터 점검 + 대폭 확장</li>
+  <li>4개 외부 서비스 Full-SSO 연동</li>
+  <li>Rocket.Chat SSO 계속 작업</li>
+  <li>모든 대화 내용 doc 폴더에 PDF 저장</li>
+</ol>
+
+<h1 class="section-break">13. 지금 즉시 체험 가능한 플로우</h1>
+
+<pre>1. http://localhost:25174 → Keycloak 로그인 (user1 / user1)
+2. 대시보드: 오늘 일정 3건 + 공지 5건 + 결재 대기 6건 + 알림
+3. 사이드바 전자결재 → 9종 박스 + 대기 결재 5건
+4. 사이드바 게시판 → 4종 필터 + 50건 + paginator
+5. 사이드바 캘린더 → FullCalendar 4월 51 이벤트
+6. 사이드바 조직도 → 부서 트리 + 직원 카드 30명
+7. 사이드바 메신저 → "메신저 열기" → Rocket.Chat Keycloak SSO 버튼
+8. 사이드바 메일 → Stalwart (user1/user1 LDAP Fed)
+9. 사이드바 위키 → "위키 열기" → Wiki.js Keycloak SSO 버튼
+10. 사이드바 화상회의 → "룸 생성/입장" → LiveKit JWT 토큰 발급 확인</pre>
+
+<h1 class="section-break">14. 부록 — 최상위 문서 업데이트 내역</h1>
+
+<h3>C:\claude\docker-info.xml</h3>
+<pre>&lt;project name="openplatform_v3" compose="infra/docker-compose.yml"&gt;
+  &lt;service name="postgres"&gt;&lt;port&gt;19432:5432&lt;/port&gt;&lt;/service&gt;
+  &lt;service name="redis"&gt;&lt;port&gt;19379:6379&lt;/port&gt;&lt;/service&gt;
+  &lt;service name="keycloak"&gt;&lt;port&gt;19281:8080&lt;/port&gt;&lt;/service&gt;
+  &lt;service name="minio"&gt;&lt;port&gt;19900:9000&lt;/port&gt;&lt;port&gt;19901:9001&lt;/port&gt;&lt;/service&gt;
+  &lt;service name="stalwart"&gt;&lt;port&gt;19025:25&lt;/port&gt;&lt;port&gt;19143:143&lt;/port&gt;&lt;port&gt;19480:8080&lt;/port&gt;&lt;/service&gt;
+  &lt;service name="mattermost"&gt;&lt;port&gt;19065:8065&lt;/port&gt;&lt;/service&gt;
+  &lt;service name="livekit"&gt;&lt;port&gt;19880:7880&lt;/port&gt;&lt;/service&gt;
+  &lt;service name="wikijs"&gt;&lt;port&gt;19001:3000&lt;/port&gt;&lt;/service&gt;
+  &lt;service name="backend-core"&gt;&lt;port&gt;19090:8080&lt;/port&gt;&lt;/service&gt;
+  &lt;service name="backend-bff"&gt;&lt;port&gt;19091:8080&lt;/port&gt;&lt;/service&gt;
+  &lt;service name="ui-frontend"&gt;&lt;port&gt;25174:5174&lt;/port&gt;&lt;port&gt;19173:80&lt;/port&gt;&lt;/service&gt;
+&lt;/project&gt;</pre>
+
+<h3>C:\claude\port-change-report.md — 2026-04-14 추가 이력</h3>
+<p>openplatform_v3 신규 프로젝트. 19xxx 대역 할당. 12개 서비스 신규 포트 등록. 충돌 없음.</p>
+
+<hr>
+
+<p class="meta" style="text-align:center; margin-top: 30px; font-size: 9pt;">
+openplatform v3 — 통합 그룹웨어 구축 세션 기록<br>
+자동 생성: 2026-04-15 &nbsp;·&nbsp; 총 14 섹션<br>
+Claude Code Autonomous Development Framework V2
+</p>
+
+</body>
+</html>

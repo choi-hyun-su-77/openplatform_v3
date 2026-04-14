@@ -1,0 +1,371 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  결재선 규칙 DMN 테이블 (Approval Line Rules Decision Table)
+  ===========================================================
+  용도: 문서유형(docType), 금액(amount), 휴가일수(leaveDays)에 따라
+        결재선(approvalLine)과 합의선(agreementLine)을 결정한다.
+  hitPolicy: FIRST (첫 번째 매칭 규칙 사용)
+  연동: dynamic_approval_line.bpmn20.xml의 BusinessRuleTask에서 호출
+  Flowable 7.x / DMN 1.3 호환. v1(openplatform/bpmn)에서 v3로 포팅.
+
+  규칙 13종:
+   1. 휴가 1~3일 → 팀장
+   2. 휴가 4일+ → 팀장→본부장
+   3. 지출 50만 미만 → 팀장
+   4. 지출 50~100만 → 팀장→본부장
+   5. 지출 100~500만 → 팀장→본부장→대표
+   6. 지출 500만+ → 팀장→본부장→대표 + 경영지원 합의
+   7. 구매 100만 미만 → 팀장 + 구매부서 합의
+   8. 구매 100만+ → 팀장→본부장 + 구매부서 합의
+   9. 출장(국내) → 팀장
+  10. 출장(해외) → 팀장→본부장→대표
+  11. 계약 1000만 미만 → 팀장→본부장 + 법무 합의
+  12. 계약 1000만+ → 팀장→본부장→대표 + 법무 합의
+  13. 일반 → 팀장
+-->
+<definitions xmlns="https://www.omg.org/spec/DMN/20191111/MODEL/"
+             xmlns:flowable="http://flowable.org/dmn"
+             id="approvalLineRulesDefinitions"
+             name="결재선 규칙"
+             namespace="http://openplatform-v3.example.com/dmn">
+
+  <decision id="approval_line_rules" name="결재선 결정 규칙">
+
+    <decisionTable id="approvalLineDecisionTable" hitPolicy="FIRST">
+
+      <!-- ==================== 입력 컬럼 ==================== -->
+      <input id="input_docType" label="문서유형">
+        <inputExpression id="inputExpr_docType" typeRef="string">
+          <text>docType</text>
+        </inputExpression>
+        <inputValues>
+          <text>"LEAVE","EXPENSE","PURCHASE","TRAVEL","CONTRACT","GENERAL"</text>
+        </inputValues>
+      </input>
+
+      <input id="input_amount" label="금액">
+        <inputExpression id="inputExpr_amount" typeRef="number">
+          <text>amount</text>
+        </inputExpression>
+      </input>
+
+      <input id="input_leaveDays" label="휴가일수">
+        <inputExpression id="inputExpr_leaveDays" typeRef="number">
+          <text>leaveDays</text>
+        </inputExpression>
+      </input>
+
+      <!-- ==================== 출력 컬럼 ==================== -->
+      <output id="output_approvalLine" label="결재선" name="approvalLine" typeRef="string" />
+      <output id="output_agreementLine" label="합의선" name="agreementLine" typeRef="string" />
+      <output id="output_description" label="설명" name="description" typeRef="string" />
+
+      <!-- ==================== 규칙 ==================== -->
+
+      <!-- 규칙 1: 휴가 1~3일 → 팀장 -->
+      <rule id="rule_1">
+        <description>휴가 1~3일: 팀장 전결</description>
+        <inputEntry id="rule1_input1">
+          <text>"LEAVE"</text>
+        </inputEntry>
+        <inputEntry id="rule1_input2">
+          <text>-</text>
+        </inputEntry>
+        <inputEntry id="rule1_input3">
+          <text>&lt;= 3</text>
+        </inputEntry>
+        <outputEntry id="rule1_output1">
+          <text>["TEAM_LEADER"]</text>
+        </outputEntry>
+        <outputEntry id="rule1_output2">
+          <text></text>
+        </outputEntry>
+        <outputEntry id="rule1_output3">
+          <text>"휴가 1~3일: 팀장"</text>
+        </outputEntry>
+      </rule>
+
+      <!-- 규칙 2: 휴가 4일+ → 팀장→본부장 -->
+      <rule id="rule_2">
+        <description>휴가 4일 이상: 팀장→본부장</description>
+        <inputEntry id="rule2_input1">
+          <text>"LEAVE"</text>
+        </inputEntry>
+        <inputEntry id="rule2_input2">
+          <text>-</text>
+        </inputEntry>
+        <inputEntry id="rule2_input3">
+          <text>&gt; 3</text>
+        </inputEntry>
+        <outputEntry id="rule2_output1">
+          <text>["TEAM_LEADER","DIVISION_HEAD"]</text>
+        </outputEntry>
+        <outputEntry id="rule2_output2">
+          <text></text>
+        </outputEntry>
+        <outputEntry id="rule2_output3">
+          <text>"휴가 4일+: 팀장→본부장"</text>
+        </outputEntry>
+      </rule>
+
+      <!-- 규칙 3: 지출 50만 미만 → 팀장 -->
+      <rule id="rule_3">
+        <description>지출 50만원 미만: 팀장 전결</description>
+        <inputEntry id="rule3_input1">
+          <text>"EXPENSE"</text>
+        </inputEntry>
+        <inputEntry id="rule3_input2">
+          <text>&lt; 500000</text>
+        </inputEntry>
+        <inputEntry id="rule3_input3">
+          <text>-</text>
+        </inputEntry>
+        <outputEntry id="rule3_output1">
+          <text>["TEAM_LEADER"]</text>
+        </outputEntry>
+        <outputEntry id="rule3_output2">
+          <text></text>
+        </outputEntry>
+        <outputEntry id="rule3_output3">
+          <text>"지출 50만 미만: 팀장"</text>
+        </outputEntry>
+      </rule>
+
+      <!-- 규칙 4: 지출 50~100만 → 팀장→본부장 -->
+      <rule id="rule_4">
+        <description>지출 50~100만원: 팀장→본부장</description>
+        <inputEntry id="rule4_input1">
+          <text>"EXPENSE"</text>
+        </inputEntry>
+        <inputEntry id="rule4_input2">
+          <text>[500000..1000000]</text>
+        </inputEntry>
+        <inputEntry id="rule4_input3">
+          <text>-</text>
+        </inputEntry>
+        <outputEntry id="rule4_output1">
+          <text>["TEAM_LEADER","DIVISION_HEAD"]</text>
+        </outputEntry>
+        <outputEntry id="rule4_output2">
+          <text></text>
+        </outputEntry>
+        <outputEntry id="rule4_output3">
+          <text>"지출 50~100만: 팀장→본부장"</text>
+        </outputEntry>
+      </rule>
+
+      <!-- 규칙 5: 지출 100~500만 → 팀장→본부장→대표 -->
+      <rule id="rule_5">
+        <description>지출 100~500만원: 팀장→본부장→대표</description>
+        <inputEntry id="rule5_input1">
+          <text>"EXPENSE"</text>
+        </inputEntry>
+        <inputEntry id="rule5_input2">
+          <text>[1000000..5000000]</text>
+        </inputEntry>
+        <inputEntry id="rule5_input3">
+          <text>-</text>
+        </inputEntry>
+        <outputEntry id="rule5_output1">
+          <text>["TEAM_LEADER","DIVISION_HEAD","CEO"]</text>
+        </outputEntry>
+        <outputEntry id="rule5_output2">
+          <text></text>
+        </outputEntry>
+        <outputEntry id="rule5_output3">
+          <text>"지출 100~500만: 팀장→본부장→대표"</text>
+        </outputEntry>
+      </rule>
+
+      <!-- 규칙 6: 지출 500만+ → 팀장→본부장→대표 + 경영지원 합의 -->
+      <rule id="rule_6">
+        <description>지출 500만원 이상: 팀장→본부장→대표 + 경영지원합의</description>
+        <inputEntry id="rule6_input1">
+          <text>"EXPENSE"</text>
+        </inputEntry>
+        <inputEntry id="rule6_input2">
+          <text>&gt;= 5000000</text>
+        </inputEntry>
+        <inputEntry id="rule6_input3">
+          <text>-</text>
+        </inputEntry>
+        <outputEntry id="rule6_output1">
+          <text>["TEAM_LEADER","DIVISION_HEAD","CEO"]</text>
+        </outputEntry>
+        <outputEntry id="rule6_output2">
+          <text>["BIZ_SUPPORT"]</text>
+        </outputEntry>
+        <outputEntry id="rule6_output3">
+          <text>"지출 500만+: 팀장→본부장→대표+경영지원합의"</text>
+        </outputEntry>
+      </rule>
+
+      <!-- 규칙 7: 구매 100만 미만 → 팀장 + 구매부서 합의 -->
+      <rule id="rule_7">
+        <description>구매 100만원 미만: 팀장 + 구매부서합의</description>
+        <inputEntry id="rule7_input1">
+          <text>"PURCHASE"</text>
+        </inputEntry>
+        <inputEntry id="rule7_input2">
+          <text>&lt; 1000000</text>
+        </inputEntry>
+        <inputEntry id="rule7_input3">
+          <text>-</text>
+        </inputEntry>
+        <outputEntry id="rule7_output1">
+          <text>["TEAM_LEADER"]</text>
+        </outputEntry>
+        <outputEntry id="rule7_output2">
+          <text>["PURCHASE_DEPT"]</text>
+        </outputEntry>
+        <outputEntry id="rule7_output3">
+          <text>"구매 100만 미만: 팀장+구매부서합의"</text>
+        </outputEntry>
+      </rule>
+
+      <!-- 규칙 8: 구매 100만+ → 팀장→본부장 + 구매부서 합의 -->
+      <rule id="rule_8">
+        <description>구매 100만원 이상: 팀장→본부장 + 구매부서합의</description>
+        <inputEntry id="rule8_input1">
+          <text>"PURCHASE"</text>
+        </inputEntry>
+        <inputEntry id="rule8_input2">
+          <text>&gt;= 1000000</text>
+        </inputEntry>
+        <inputEntry id="rule8_input3">
+          <text>-</text>
+        </inputEntry>
+        <outputEntry id="rule8_output1">
+          <text>["TEAM_LEADER","DIVISION_HEAD"]</text>
+        </outputEntry>
+        <outputEntry id="rule8_output2">
+          <text>["PURCHASE_DEPT"]</text>
+        </outputEntry>
+        <outputEntry id="rule8_output3">
+          <text>"구매 100만+: 팀장→본부장+구매부서합의"</text>
+        </outputEntry>
+      </rule>
+
+      <!-- 규칙 9: 출장(국내) → 팀장 -->
+      <rule id="rule_9">
+        <description>국내출장: 팀장</description>
+        <inputEntry id="rule9_input1">
+          <text>"TRAVEL"</text>
+        </inputEntry>
+        <inputEntry id="rule9_input2">
+          <text>-</text>
+        </inputEntry>
+        <inputEntry id="rule9_input3">
+          <text>-</text>
+        </inputEntry>
+        <outputEntry id="rule9_output1">
+          <text>["TEAM_LEADER"]</text>
+        </outputEntry>
+        <outputEntry id="rule9_output2">
+          <text></text>
+        </outputEntry>
+        <outputEntry id="rule9_output3">
+          <text>"국내출장: 팀장"</text>
+        </outputEntry>
+      </rule>
+
+      <!-- 규칙 10: 출장(해외) → 팀장→본부장→대표
+           참고: TRAVEL_OVERSEAS를 별도 docType으로 분리하거나,
+           추가 입력 변수(travelType)로 구분하는 것이 실무적.
+           여기서는 amount 필드를 travelType 용도로 재활용:
+           amount == 1 (domestic), amount == 2 (overseas) -->
+      <rule id="rule_10">
+        <description>해외출장: 팀장→본부장→대표 (docType=TRAVEL_OVERSEAS로 구분)</description>
+        <inputEntry id="rule10_input1">
+          <text>"TRAVEL_OVERSEAS"</text>
+        </inputEntry>
+        <inputEntry id="rule10_input2">
+          <text>-</text>
+        </inputEntry>
+        <inputEntry id="rule10_input3">
+          <text>-</text>
+        </inputEntry>
+        <outputEntry id="rule10_output1">
+          <text>["TEAM_LEADER","DIVISION_HEAD","CEO"]</text>
+        </outputEntry>
+        <outputEntry id="rule10_output2">
+          <text></text>
+        </outputEntry>
+        <outputEntry id="rule10_output3">
+          <text>"해외출장: 팀장→본부장→대표"</text>
+        </outputEntry>
+      </rule>
+
+      <!-- 규칙 11: 계약 1000만 미만 → 팀장→본부장 + 법무 합의 -->
+      <rule id="rule_11">
+        <description>계약 1000만원 미만: 팀장→본부장 + 법무합의</description>
+        <inputEntry id="rule11_input1">
+          <text>"CONTRACT"</text>
+        </inputEntry>
+        <inputEntry id="rule11_input2">
+          <text>&lt; 10000000</text>
+        </inputEntry>
+        <inputEntry id="rule11_input3">
+          <text>-</text>
+        </inputEntry>
+        <outputEntry id="rule11_output1">
+          <text>["TEAM_LEADER","DIVISION_HEAD"]</text>
+        </outputEntry>
+        <outputEntry id="rule11_output2">
+          <text>["LEGAL"]</text>
+        </outputEntry>
+        <outputEntry id="rule11_output3">
+          <text>"계약 1000만 미만: 팀장→본부장+법무합의"</text>
+        </outputEntry>
+      </rule>
+
+      <!-- 규칙 12: 계약 1000만+ → 팀장→본부장→대표 + 법무 합의 -->
+      <rule id="rule_12">
+        <description>계약 1000만원 이상: 팀장→본부장→대표 + 법무합의</description>
+        <inputEntry id="rule12_input1">
+          <text>"CONTRACT"</text>
+        </inputEntry>
+        <inputEntry id="rule12_input2">
+          <text>&gt;= 10000000</text>
+        </inputEntry>
+        <inputEntry id="rule12_input3">
+          <text>-</text>
+        </inputEntry>
+        <outputEntry id="rule12_output1">
+          <text>["TEAM_LEADER","DIVISION_HEAD","CEO"]</text>
+        </outputEntry>
+        <outputEntry id="rule12_output2">
+          <text>["LEGAL"]</text>
+        </outputEntry>
+        <outputEntry id="rule12_output3">
+          <text>"계약 1000만+: 팀장→본부장→대표+법무합의"</text>
+        </outputEntry>
+      </rule>
+
+      <!-- 규칙 13: 일반 → 팀장 (기본 폴백 규칙) -->
+      <rule id="rule_13">
+        <description>일반 문서: 팀장 (기본 규칙)</description>
+        <inputEntry id="rule13_input1">
+          <text>-</text>
+        </inputEntry>
+        <inputEntry id="rule13_input2">
+          <text>-</text>
+        </inputEntry>
+        <inputEntry id="rule13_input3">
+          <text>-</text>
+        </inputEntry>
+        <outputEntry id="rule13_output1">
+          <text>["TEAM_LEADER"]</text>
+        </outputEntry>
+        <outputEntry id="rule13_output2">
+          <text></text>
+        </outputEntry>
+        <outputEntry id="rule13_output3">
+          <text>"일반: 팀장"</text>
+        </outputEntry>
+      </rule>
+
+    </decisionTable>
+  </decision>
+
+</definitions>

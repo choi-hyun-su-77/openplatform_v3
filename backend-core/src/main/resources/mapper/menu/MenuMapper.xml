@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.platform.v3.core.menu.mapper.MenuMapper">
+    <select id="selectMenusByRoles" resultType="map">
+        SELECT DISTINCT
+               m.menu_id, m.menu_name, m.menu_path, m.parent_menu_id,
+               m.menu_level, m.sort_order, m.icon,
+               BOOL_OR(rm.can_read)   AS can_read,
+               BOOL_OR(rm.can_create) AS can_create,
+               BOOL_OR(rm.can_update) AS can_update,
+               BOOL_OR(rm.can_delete) AS can_delete,
+               BOOL_OR(rm.can_export) AS can_export,
+               BOOL_OR(rm.can_print)  AS can_print
+        FROM platform_v3.cm_menu m
+        INNER JOIN platform_v3.cm_role_menu rm ON rm.menu_id = m.menu_id
+        WHERE m.use_yn = 'Y'
+          AND rm.role_id IN
+          <foreach collection="roles" item="r" open="(" close=")" separator=",">#{r}</foreach>
+        GROUP BY m.menu_id, m.menu_name, m.menu_path, m.parent_menu_id, m.menu_level, m.sort_order, m.icon
+        ORDER BY m.menu_level, m.sort_order
+    </select>
+</mapper>

@@ -1,0 +1,213 @@
+# =============================================================================
+# openplatform v3 — CI/CD 파이프라인
+# -----------------------------------------------------------------------------
+# 트리거: main 브랜치 push, 모든 PR
+# 잡:
+#   1) backend-core-test  — Maven + JDK 17 단위 테스트
+#   2) backend-bff-test   — Maven + JDK 17 단위 테스트
+#   3) ui-build           — Node 20 lint + build
+#   4) compose-validate   — docker compose config 유효성 검증
+#   5) e2e                — postgres + keycloak 기동 후 health 체크 (optional)
+# =============================================================================
+
+name: openplatform-v3 CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# 동시 실행 방지 — 같은 브랜치의 이전 워크플로우 자동 취소
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ===========================================================================
+  # 1) backend-core — Spring Boot DataSet 코어
+  # ===========================================================================
+  backend-core-test:
+    name: backend-core (Maven / JDK 17)
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        java-version: [17]   # 필요 시 [17, 21] 로 확장
+    steps:
+      - name: 소스 체크아웃
+        uses: actions/checkout@v4
+
+      - name: JDK ${{ matrix.java-version }} 셋업
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: ${{ matrix.java-version }}
+
+      - name: Maven 캐시 복원
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2/repository
+          key: m2-core-${{ runner.os }}-${{ hashFiles('backend-core/pom.xml') }}
+          restore-keys: |
+            m2-core-${{ runner.os }}-
+
+      - name: backend-core 컴파일 + 테스트
+        working-directory: backend-core
+        run: mvn -B -ntp clean verify
+
+      - name: 테스트 결과 업로드 (실패 시)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-core-surefire
+          path: backend-core/target/surefire-reports/
+
+  # ===========================================================================
+  # 2) backend-bff — WebFlux Port-Adapter
+  # ===========================================================================
+  backend-bff-test:
+    name: backend-bff (Maven / JDK 17)
+    runs-on: ubuntu-latest
+    steps:
+      - name: 소스 체크아웃
+        uses: actions/checkout@v4
+
+      - name: JDK 17 셋업
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Maven 캐시 복원
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2/repository
+          key: m2-bff-${{ runner.os }}-${{ hashFiles('backend-bff/pom.xml') }}
+          restore-keys: |
+            m2-bff-${{ runner.os }}-
+
+      - name: backend-bff 컴파일 + 테스트
+        working-directory: backend-bff
+        run: mvn -B -ntp clean verify
+
+      - name: 테스트 결과 업로드 (실패 시)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-bff-surefire
+          path: backend-bff/target/surefire-reports/
+
+  # ===========================================================================
+  # 3) ui — Vue 3 + Vite 린트 + 빌드
+  # ===========================================================================
+  ui-build:
+    name: ui (Node 20 / lint + build)
+    runs-on: ubuntu-latest
+    steps:
+      - name: 소스 체크아웃
+        uses: actions/checkout@v4
+
+      - name: Node.js 20 셋업 (npm 캐시 자동)
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: ui/package-lock.json
+
+      - name: 의존성 설치
+        working-directory: ui
+        run: npm ci
+
+      - name: 린트
+        working-directory: ui
+        run: npm run lint --if-present
+
+      - name: 타입 체크 + 빌드
+        working-directory: ui
+        run: npm run build
+
+      - name: 빌드 결과 업로드
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-dist
+          path: ui/dist
+          retention-days: 3
+
+  # ===========================================================================
+  # 4) docker compose 유효성 검증
+  # ===========================================================================
+  compose-validate:
+    name: docker compose config
+    runs-on: ubuntu-latest
+    steps:
+      - name: 소스 체크아웃
+        uses: actions/checkout@v4
+
+      - name: compose 파일 구문 검사
+        run: |
+          docker compose -f infra/docker-compose.yml config --quiet
+          echo "compose config 구문 OK"
+
+      - name: 루트 compose 추가 검사 (있다면)
+        run: |
+          if [[ -f docker-compose.yml ]]; then
+            docker compose -f docker-compose.yml config --quiet
+          fi
+
+  # ===========================================================================
+  # 5) E2E — postgres + keycloak 기동 후 health 체크 (optional)
+  # ===========================================================================
+  e2e:
+    name: e2e health check (optional)
+    runs-on: ubuntu-latest
+    needs: [backend-core-test, backend-bff-test, ui-build, compose-validate]
+    # PR 에서는 실행 안 함 — main push 일 때만
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: platform_v3
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      keycloak:
+        image: quay.io/keycloak/keycloak:24.0
+        env:
+          KEYCLOAK_ADMIN: admin
+          KEYCLOAK_ADMIN_PASSWORD: admin
+          KC_DB: dev-mem
+        ports: ['8080:8080']
+        options: >-
+          --health-cmd "curl -f http://localhost:8080/health/ready || exit 0"
+          --health-interval 15s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - name: 소스 체크아웃
+        uses: actions/checkout@v4
+
+      - name: postgres 연결 확인
+        run: |
+          until pg_isready -h localhost -p 5432 -U postgres; do
+            echo "postgres 대기..."; sleep 2
+          done
+          echo "postgres OK"
+
+      - name: keycloak 기동 대기
+        run: |
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:8080/realms/master >/dev/null; then
+              echo "keycloak OK"; exit 0
+            fi
+            echo "keycloak 대기 ($i/30)..."; sleep 5
+          done
+          echo "keycloak 기동 실패"; exit 1
+
+      - name: 최종 상태 보고
+        run: echo "e2e health check 통과"

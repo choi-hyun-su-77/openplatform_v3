@@ -1,0 +1,356 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  DMN 기반 동적 결재선 결정 프로세스 (Dynamic Approval Line via DMN) — v3 포팅본
+  ================================================================
+  용도: 문서 유형/금액/휴가일수에 따라 DMN 규칙 테이블로 결재선을 동적 결정하고,
+        Multi-Instance SubProcess로 순차 결재를 수행한다.
+  DMN 테이블: approval_line_rules.dmn (classpath:dmn/)
+  Flowable 7.x 호환. v1(openplatform/bpmn)에서 포팅.
+-->
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
+             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+             xmlns:flowable="http://flowable.org/bpmn"
+             xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+             xmlns:omgdc="http://www.omg.org/spec/DD/20100524/DC"
+             xmlns:omgdi="http://www.omg.org/spec/DD/20100524/DI"
+             targetNamespace="http://openplatform-v3.example.com/approval"
+             typeLanguage="http://www.w3.org/2001/XMLSchema"
+             expressionLanguage="http://www.w3.org/1999/XPath">
+
+  <process id="dynamicApprovalLine" name="DMN 동적 결재선 프로세스" isExecutable="true">
+
+    <documentation>DMN 결재선 결정: 문서 유형, 금액, 휴가일수를 기반으로 결재선을 동적으로 결정하고,
+Multi-Instance SubProcess를 통해 순차 결재를 수행한다.</documentation>
+
+    <!-- ==================== 시작 ==================== -->
+    <startEvent id="startEvent" name="결재 시작">
+      <extensionElements>
+        <flowable:executionListener event="start"
+            delegateExpression="${approvalProcessStartListener}" />
+      </extensionElements>
+    </startEvent>
+
+    <!-- ==================== 문서 정보 수집 ==================== -->
+    <serviceTask id="collectDocInfo" name="문서 정보 수집"
+                 flowable:delegateExpression="${collectDocInfoDelegate}">
+      <documentation>문서 유형(docType), 금액(amount), 휴가일수(leaveDays) 등
+DMN 결재선 결정에 필요한 변수들을 수집하여 프로세스 변수로 설정한다.</documentation>
+    </serviceTask>
+
+    <!-- ==================== 결재자 자동 해석 (ServiceTask) ==================== -->
+    <!-- v3 포팅본: Drools 의존성 회피를 위해 businessRuleTask → serviceTask 로 대체.
+         ApprovalAssigneeResolver 델리게이트가 SQL 기반 DMN 로직 수행 -->
+    <serviceTask id="determineApprovalLine" name="결재선 결정 (Delegate)"
+                 flowable:delegateExpression="${approvalAssigneeResolver}">
+      <documentation>ApprovalAssigneeResolver 빈이 amount/formCode 변수를 읽어
+DB 쿼리 (approvers_from_dmn) 로 결재자 목록을 approverList 변수에 저장한다.</documentation>
+    </serviceTask>
+
+    <!-- ==================== 결재선 파싱 (ScriptTask) ==================== -->
+    <scriptTask id="parseApprovalLine" name="결재선 파싱"
+                scriptFormat="javascript"
+                flowable:autoStoreVariables="true">
+      <documentation>DMN 결과에서 결재선 JSON을 파싱하여
+approverList (배열)와 stepCount (단계 수)를 프로세스 변수로 설정한다.</documentation>
+      <script><![CDATA[
+// DMN 결과에서 결재선 정보 추출
+var result = execution.getVariable('dmnResult');
+var approvalLineJson = '';
+var description = '';
+
+if (result != null) {
+    // Flowable DMN 결과는 Map 형태로 반환된다
+    approvalLineJson = result.get('approvalLine');
+    description = result.get('description');
+}
+
+// JSON 파싱하여 결재자 목록 생성
+var approverList = [];
+if (approvalLineJson != null && approvalLineJson != '') {
+    var parsed = JSON.parse(approvalLineJson);
+    for (var i = 0; i < parsed.length; i++) {
+        approverList.push(parsed[i]);
+    }
+}
+
+// 프로세스 변수 설정
+execution.setVariable('approverList', java.util.Arrays.asList(
+    approverList.map(function(item) { return item; })
+));
+execution.setVariable('stepCount', approverList.length);
+execution.setVariable('approvalDescription', description);
+execution.setVariable('currentStepIndex', 0);
+
+// 합의 대상자가 있는 경우 별도 변수로 설정
+// DMN 결과에 agree 필드가 있으면 합의자 목록도 설정
+var agreementLineJson = result != null ? result.get('agreementLine') : null;
+if (agreementLineJson != null && agreementLineJson != '') {
+    var agreementList = JSON.parse(agreementLineJson);
+    execution.setVariable('agreementList', java.util.Arrays.asList(
+        agreementList.map(function(item) { return item; })
+    ));
+    execution.setVariable('hasAgreement', true);
+} else {
+    execution.setVariable('hasAgreement', false);
+}
+      ]]></script>
+    </scriptTask>
+
+    <!-- ==================== 동적 결재 (Multi-Instance SubProcess) ==================== -->
+    <subProcess id="dynamicApprovalSubProcess" name="동적 결재 단계">
+      <multiInstanceLoopCharacteristics isSequential="true"
+          flowable:collection="${approverList}"
+          flowable:elementVariable="currentApprover">
+        <completionCondition>${approvalRejected == true}</completionCondition>
+      </multiInstanceLoopCharacteristics>
+
+      <!-- SubProcess 시작 -->
+      <startEvent id="subStartEvent" name="단계 시작" />
+
+      <!-- 동적 결재 UserTask -->
+      <userTask id="dynamicApprovalTask" name="결재: ${currentApprover}"
+                flowable:assignee="${approvalAssigneeResolver.resolve(currentApprover, execution)}"
+                flowable:formKey="form-approval">
+        <extensionElements>
+          <flowable:taskListener event="create"
+              delegateExpression="${approvalNotificationListener}" />
+          <flowable:taskListener event="complete"
+              delegateExpression="${approvalHistoryListener}" />
+          <flowable:formProperty id="comment" name="의견" type="string" required="false" />
+          <flowable:formProperty id="action" name="결재액션" type="enum" required="true">
+            <flowable:value id="APPROVE" name="승인" />
+            <flowable:value id="REJECT" name="반려" />
+          </flowable:formProperty>
+        </extensionElements>
+      </userTask>
+
+      <!-- 승인/반려 분기 -->
+      <exclusiveGateway id="subApprovalGateway" name="승인/반려" />
+
+      <!-- 승인 처리 -->
+      <serviceTask id="subApproveTask" name="단계 승인 기록"
+                   flowable:delegateExpression="${stepApprovalDelegate}">
+        <documentation>현재 단계 승인을 기록하고 approvalRejected = false 유지</documentation>
+      </serviceTask>
+
+      <!-- 반려 처리 -->
+      <serviceTask id="subRejectTask" name="단계 반려 처리"
+                   flowable:expression="${execution.setVariable('approvalRejected', true)}">
+        <documentation>approvalRejected = true로 설정하여 Multi-Instance 루프를 종료한다</documentation>
+      </serviceTask>
+
+      <!-- SubProcess 종료 -->
+      <endEvent id="subEndApproved" name="단계 승인 완료" />
+      <endEvent id="subEndRejected" name="단계 반려" />
+
+      <!-- SubProcess 내부 시퀀스 플로우 -->
+      <sequenceFlow id="sub_flow_start" sourceRef="subStartEvent" targetRef="dynamicApprovalTask" />
+      <sequenceFlow id="sub_flow_gw" sourceRef="dynamicApprovalTask" targetRef="subApprovalGateway" />
+
+      <sequenceFlow id="sub_flow_approve" name="승인" sourceRef="subApprovalGateway" targetRef="subApproveTask">
+        <conditionExpression xsi:type="tFormalExpression">${action == 'APPROVE'}</conditionExpression>
+      </sequenceFlow>
+
+      <sequenceFlow id="sub_flow_reject" name="반려" sourceRef="subApprovalGateway" targetRef="subRejectTask">
+        <conditionExpression xsi:type="tFormalExpression">${action == 'REJECT'}</conditionExpression>
+      </sequenceFlow>
+
+      <sequenceFlow id="sub_flow_approve_end" sourceRef="subApproveTask" targetRef="subEndApproved" />
+      <sequenceFlow id="sub_flow_reject_end" sourceRef="subRejectTask" targetRef="subEndRejected" />
+
+    </subProcess>
+
+    <!-- ==================== 결재 결과 분기 ==================== -->
+    <exclusiveGateway id="finalResultGateway" name="최종 결재 결과" />
+
+    <!-- ==================== 결재 완료 처리 ==================== -->
+    <serviceTask id="approvalCompleteTask" name="결재 완료 처리"
+                 flowable:delegateExpression="${approvalCompleteDelegate}">
+      <documentation>모든 결재 단계가 승인되어 최종 완료 처리한다.</documentation>
+    </serviceTask>
+
+    <!-- ==================== 반려 처리 ==================== -->
+    <serviceTask id="rejectionTask" name="반려 처리"
+                 flowable:delegateExpression="${rejectionDelegate}" />
+
+    <!-- ==================== 종료 ==================== -->
+    <endEvent id="endApproved" name="결재 완료" />
+    <endEvent id="endRejected" name="반려 종료" />
+
+    <!-- ==================== 시퀀스 플로우 ==================== -->
+    <sequenceFlow id="flow_start_collect" sourceRef="startEvent" targetRef="collectDocInfo" />
+    <sequenceFlow id="flow_collect_dmn" sourceRef="collectDocInfo" targetRef="determineApprovalLine" />
+    <sequenceFlow id="flow_dmn_parse" sourceRef="determineApprovalLine" targetRef="parseApprovalLine" />
+    <sequenceFlow id="flow_parse_subprocess" sourceRef="parseApprovalLine" targetRef="dynamicApprovalSubProcess" />
+    <sequenceFlow id="flow_subprocess_result" sourceRef="dynamicApprovalSubProcess" targetRef="finalResultGateway" />
+
+    <!-- 전원 승인 -->
+    <sequenceFlow id="flow_all_approved" name="전원 승인" sourceRef="finalResultGateway" targetRef="approvalCompleteTask">
+      <conditionExpression xsi:type="tFormalExpression">${approvalRejected == false}</conditionExpression>
+    </sequenceFlow>
+
+    <!-- 반려 발생 -->
+    <sequenceFlow id="flow_has_rejection" name="반려 발생" sourceRef="finalResultGateway" targetRef="rejectionTask">
+      <conditionExpression xsi:type="tFormalExpression">${approvalRejected == true}</conditionExpression>
+    </sequenceFlow>
+
+    <sequenceFlow id="flow_complete_end" sourceRef="approvalCompleteTask" targetRef="endApproved" />
+    <sequenceFlow id="flow_reject_end" sourceRef="rejectionTask" targetRef="endRejected" />
+
+  </process>
+
+  <!-- ==================== BPMN Diagram ==================== -->
+  <bpmndi:BPMNDiagram id="BPMNDiagram_dynamicApprovalLine">
+    <bpmndi:BPMNPlane bpmnElement="dynamicApprovalLine" id="BPMNPlane_dynamicApprovalLine">
+
+      <bpmndi:BPMNShape id="shape_startEvent" bpmnElement="startEvent">
+        <omgdc:Bounds x="100" y="250" width="36" height="36" />
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="shape_collectDocInfo" bpmnElement="collectDocInfo">
+        <omgdc:Bounds x="200" y="228" width="140" height="80" />
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="shape_determineApprovalLine" bpmnElement="determineApprovalLine">
+        <omgdc:Bounds x="400" y="228" width="160" height="80" />
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="shape_parseApprovalLine" bpmnElement="parseApprovalLine">
+        <omgdc:Bounds x="620" y="228" width="120" height="80" />
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="shape_dynamicApprovalSubProcess" bpmnElement="dynamicApprovalSubProcess" isExpanded="true">
+        <omgdc:Bounds x="800" y="140" width="560" height="260" />
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="shape_subStartEvent" bpmnElement="subStartEvent">
+        <omgdc:Bounds x="830" y="252" width="36" height="36" />
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="shape_dynamicApprovalTask" bpmnElement="dynamicApprovalTask">
+        <omgdc:Bounds x="910" y="230" width="140" height="80" />
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="shape_subApprovalGateway" bpmnElement="subApprovalGateway" isMarkerVisible="true">
+        <omgdc:Bounds x="1090" y="250" width="40" height="40" />
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="shape_subApproveTask" bpmnElement="subApproveTask">
+        <omgdc:Bounds x="1170" y="170" width="140" height="60" />
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="shape_subRejectTask" bpmnElement="subRejectTask">
+        <omgdc:Bounds x="1170" y="310" width="140" height="60" />
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="shape_subEndApproved" bpmnElement="subEndApproved">
+        <omgdc:Bounds x="1330" y="182" width="20" height="20" />
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="shape_subEndRejected" bpmnElement="subEndRejected">
+        <omgdc:Bounds x="1330" y="322" width="20" height="20" />
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="shape_finalResultGateway" bpmnElement="finalResultGateway" isMarkerVisible="true">
+        <omgdc:Bounds x="1420" y="248" width="40" height="40" />
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="shape_approvalCompleteTask" bpmnElement="approvalCompleteTask">
+        <omgdc:Bounds x="1520" y="228" width="140" height="80" />
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="shape_rejectionTask" bpmnElement="rejectionTask">
+        <omgdc:Bounds x="1520" y="380" width="120" height="80" />
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="shape_endApproved" bpmnElement="endApproved">
+        <omgdc:Bounds x="1720" y="250" width="36" height="36" />
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="shape_endRejected" bpmnElement="endRejected">
+        <omgdc:Bounds x="1720" y="402" width="36" height="36" />
+      </bpmndi:BPMNShape>
+
+      <!-- Edges -->
+      <bpmndi:BPMNEdge id="edge_flow_start_collect" bpmnElement="flow_start_collect">
+        <omgdi:waypoint x="136" y="268" />
+        <omgdi:waypoint x="200" y="268" />
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="edge_flow_collect_dmn" bpmnElement="flow_collect_dmn">
+        <omgdi:waypoint x="340" y="268" />
+        <omgdi:waypoint x="400" y="268" />
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="edge_flow_dmn_parse" bpmnElement="flow_dmn_parse">
+        <omgdi:waypoint x="560" y="268" />
+        <omgdi:waypoint x="620" y="268" />
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="edge_flow_parse_subprocess" bpmnElement="flow_parse_subprocess">
+        <omgdi:waypoint x="740" y="268" />
+        <omgdi:waypoint x="800" y="268" />
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="edge_sub_flow_start" bpmnElement="sub_flow_start">
+        <omgdi:waypoint x="866" y="270" />
+        <omgdi:waypoint x="910" y="270" />
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="edge_sub_flow_gw" bpmnElement="sub_flow_gw">
+        <omgdi:waypoint x="1050" y="270" />
+        <omgdi:waypoint x="1090" y="270" />
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="edge_sub_flow_approve" bpmnElement="sub_flow_approve">
+        <omgdi:waypoint x="1110" y="250" />
+        <omgdi:waypoint x="1110" y="200" />
+        <omgdi:waypoint x="1170" y="200" />
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="edge_sub_flow_reject" bpmnElement="sub_flow_reject">
+        <omgdi:waypoint x="1110" y="290" />
+        <omgdi:waypoint x="1110" y="340" />
+        <omgdi:waypoint x="1170" y="340" />
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="edge_sub_flow_approve_end" bpmnElement="sub_flow_approve_end">
+        <omgdi:waypoint x="1310" y="192" />
+        <omgdi:waypoint x="1330" y="192" />
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="edge_sub_flow_reject_end" bpmnElement="sub_flow_reject_end">
+        <omgdi:waypoint x="1310" y="332" />
+        <omgdi:waypoint x="1330" y="332" />
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="edge_flow_subprocess_result" bpmnElement="flow_subprocess_result">
+        <omgdi:waypoint x="1360" y="268" />
+        <omgdi:waypoint x="1420" y="268" />
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="edge_flow_all_approved" bpmnElement="flow_all_approved">
+        <omgdi:waypoint x="1460" y="268" />
+        <omgdi:waypoint x="1520" y="268" />
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="edge_flow_has_rejection" bpmnElement="flow_has_rejection">
+        <omgdi:waypoint x="1440" y="288" />
+        <omgdi:waypoint x="1440" y="420" />
+        <omgdi:waypoint x="1520" y="420" />
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="edge_flow_complete_end" bpmnElement="flow_complete_end">
+        <omgdi:waypoint x="1660" y="268" />
+        <omgdi:waypoint x="1720" y="268" />
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="edge_flow_reject_end" bpmnElement="flow_reject_end">
+        <omgdi:waypoint x="1640" y="420" />
+        <omgdi:waypoint x="1720" y="420" />
+      </bpmndi:BPMNEdge>
+
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+
+</definitions>

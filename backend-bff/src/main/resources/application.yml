@@ -1,0 +1,55 @@
+server:
+  port: ${SERVER_PORT:19091}
+
+spring:
+  application:
+    name: openplatform-v3-backend-bff
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          jwk-set-uri: ${KEYCLOAK_JWK_URI:http://keycloak:8080/realms/openplatform-v3/protocol/openid-connect/certs}
+
+bff:
+  mattermost:
+    base-url: ${MATTERMOST_URL:http://localhost:19065}
+    admin-token: ${MATTERMOST_ADMIN_TOKEN:}
+  stalwart:
+    base-url: ${STALWART_URL:http://localhost:19480}
+    admin-user: ${STALWART_ADMIN_USER:admin}
+    admin-pass: ${STALWART_ADMIN_PASS:admin}
+  wikijs:
+    base-url: ${WIKIJS_URL:http://localhost:19001}
+    api-token: ${WIKIJS_API_TOKEN:}
+  livekit:
+    url: ${LIVEKIT_URL:http://localhost:19880}
+    api-key: ${LIVEKIT_API_KEY:devkey}
+    api-secret: ${LIVEKIT_API_SECRET:devsecret_v3_changeme_32chars_minimum}
+  minio:
+    endpoint: ${MINIO_ENDPOINT:http://localhost:19900}
+    access-key: ${MINIO_ACCESS_KEY:v3minio}
+    secret-key: ${MINIO_SECRET_KEY:v3minio_pass}
+    bucket: platform-v3
+  keycloak:
+    admin-url: ${KEYCLOAK_ADMIN_URL:http://localhost:19281}
+    realm: openplatform-v3
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    prometheus:
+      enabled: true
+  metrics:
+    tags:
+      application: openplatform-v3-backend-bff
+  prometheus:
+    metrics:
+      export:
+        enabled: true
+
+logging:
+  level:
+    com.platform.v3.bff: DEBUG
