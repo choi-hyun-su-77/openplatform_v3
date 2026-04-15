@@ -65,9 +65,9 @@ services:
       MINIO_ROOT_USER: v3minio
       MINIO_ROOT_PASSWORD: v3minio_pass
       MINIO_BROWSER_REDIRECT_URL: http://localhost:19901
-      MINIO_IDENTITY_OPENID_CONFIG_URL_keycloak: http://keycloak:8080/realms/openplatform-v3/.well-known/openid-configuration
+      MINIO_IDENTITY_OPENID_CONFIG_URL_keycloak: http://kc.localtest.me:19281/realms/openplatform-v3/.well-known/openid-configuration
       MINIO_IDENTITY_OPENID_CLIENT_ID_keycloak: minio
-      MINIO_IDENTITY_OPENID_CLIENT_SECRET_keycloak: acSJl1vvUMgJzzB9L3iT0aSzg6XKEtr6
+      MINIO_IDENTITY_OPENID_CLIENT_SECRET_keycloak: minio_v3_keycloak_secret_2026_long_enough
       MINIO_IDENTITY_OPENID_CLAIM_NAME_keycloak: policy
       MINIO_IDENTITY_OPENID_DISPLAY_NAME_keycloak: "Keycloak SSO"
       MINIO_IDENTITY_OPENID_REDIRECT_URI_keycloak: http://localhost:19901/oauth_callback
@@ -79,6 +79,8 @@ services:
     volumes:
       - v3-minio-data:/data
     networks: [v3-net]
+    extra_hosts:
+      - "kc.localtest.me:host-gateway"
     healthcheck:
       test: ["CMD-SHELL", "mc ready local || exit 1"]
       interval: 15s
@@ -101,9 +103,11 @@ services:
       KC_DB_SCHEMA: keycloak_v3
       KC_HOSTNAME_STRICT: "false"
       KC_HTTP_ENABLED: "true"
-      # 고정 frontend URL — 토큰 iss 가 항상 localhost:19281 로 발급되어 내/외부 불일치 방지
-      KC_HOSTNAME_URL: "http://localhost:19281"
-      KC_HOSTNAME_ADMIN_URL: "http://localhost:19281"
+      # 통일 호스트: kc.localtest.me 는 RFC-public DNS 가 항상 127.0.0.1 로 응답.
+      # 브라우저는 DNS 로, 컨테이너는 extra_hosts(host-gateway) 로 동일 URL 사용 →
+      # SSO 쿠키 도메인이 일치하여 모든 다운스트림 서비스에서 단일 세션이 공유된다.
+      KC_HOSTNAME_URL: "http://kc.localtest.me:19281"
+      KC_HOSTNAME_ADMIN_URL: "http://kc.localtest.me:19281"
       # XA 트랜잭션 복구 활성화 (dev WARN 해소)
       QUARKUS_TRANSACTION_MANAGER_ENABLE_RECOVERY: "true"
     ports:
@@ -115,6 +119,8 @@ services:
       postgres:
         condition: service_healthy
     networks: [v3-net]
+    extra_hosts:
+      - "kc.localtest.me:host-gateway"
 
   # Mattermost TE 는 OAuth 가 Enterprise 전용이라 Rocket.Chat 으로 교체.
   # Rocket.Chat Community Edition 은 OAuth/OIDC 모두 완전 무료.
@@ -134,11 +140,38 @@ services:
       ADMIN_EMAIL: v3admin@v3.local
       OVERWRITE_SETTING_Show_Setup_Wizard: completed
       OVERWRITE_SETTING_Site_Url: http://localhost:19065
+      # ===== Keycloak Custom OAuth (provider name: keycloak) =====
+      # Rocket.Chat 의 Custom OAuth 설정 키는 Accounts_OAuth_Custom_<Name>_<field>.
+      # 컨테이너 시작 시 OVERWRITE_SETTING_* 이 DB(settings) 를 덮어쓰며,
+      # 첫 부팅 시 admin user (v3admin) 가 자동 생성되므로 수동 설정 불필요.
+      CREATE_TOKENS_FOR_USERS: 'true'
+      OVERWRITE_SETTING_Accounts_OAuth_Custom_Keycloak: 'true'
+      OVERWRITE_SETTING_Accounts_OAuth_Custom_Keycloak_url: http://localhost:19281
+      OVERWRITE_SETTING_Accounts_OAuth_Custom_Keycloak_token_path: /realms/openplatform-v3/protocol/openid-connect/token
+      OVERWRITE_SETTING_Accounts_OAuth_Custom_Keycloak_identity_path: /realms/openplatform-v3/protocol/openid-connect/userinfo
+      OVERWRITE_SETTING_Accounts_OAuth_Custom_Keycloak_authorize_path: /realms/openplatform-v3/protocol/openid-connect/auth
+      OVERWRITE_SETTING_Accounts_OAuth_Custom_Keycloak_scope: openid profile email
+      OVERWRITE_SETTING_Accounts_OAuth_Custom_Keycloak_id: rocketchat
+      OVERWRITE_SETTING_Accounts_OAuth_Custom_Keycloak_secret: rc_v3_keycloak_secret_2026_long_enough
+      OVERWRITE_SETTING_Accounts_OAuth_Custom_Keycloak_login_style: redirect
+      OVERWRITE_SETTING_Accounts_OAuth_Custom_Keycloak_button_label_text: Keycloak SSO
+      OVERWRITE_SETTING_Accounts_OAuth_Custom_Keycloak_button_label_color: '#FFFFFF'
+      OVERWRITE_SETTING_Accounts_OAuth_Custom_Keycloak_button_color: '#1E40AF'
+      OVERWRITE_SETTING_Accounts_OAuth_Custom_Keycloak_username_field: preferred_username
+      OVERWRITE_SETTING_Accounts_OAuth_Custom_Keycloak_email_field: email
+      OVERWRITE_SETTING_Accounts_OAuth_Custom_Keycloak_name_field: name
+      OVERWRITE_SETTING_Accounts_OAuth_Custom_Keycloak_merge_users: 'true'
+      OVERWRITE_SETTING_Accounts_OAuth_Custom_Keycloak_token_sent_via: header
+      OVERWRITE_SETTING_Accounts_OAuth_Custom_Keycloak_identity_token_sent_via: header
+      OVERWRITE_SETTING_Accounts_OAuth_Custom_Keycloak_show_button: 'true'
+      OVERWRITE_SETTING_API_Enable_CORS: 'true'
     ports:
       - "19065:3000"
     depends_on:
       - mongo
     networks: [v3-net]
+    extra_hosts:
+      - "kc.localtest.me:host-gateway"
 
   mongo:
     image: mongo:7.0
@@ -183,6 +216,8 @@ services:
       postgres:
         condition: service_healthy
     networks: [v3-net]
+    extra_hosts:
+      - "kc.localtest.me:host-gateway"
 
   openldap:
     image: osixia/openldap:1.5.0
@@ -194,11 +229,16 @@ services:
       LDAP_ADMIN_PASSWORD: adminpass
       LDAP_CONFIG_PASSWORD: configpass
       LDAP_BASE_DN: "dc=v3,dc=local"
+      # 첫 부팅 시 /seed-ldif 의 LDIF 를 bootstrap 디렉토리로 복사하여 자동 import.
+      # 호스트의 ./ldap 을 /seed-ldif 로 마운트(원본). 컨테이너가 내부 bootstrap 경로로
+      # cp 한 뒤 chown/import 를 수행하므로 RW 권한 충돌이 발생하지 않는다.
+      LDAP_SEED_INTERNAL_LDIF_PATH: /seed-ldif
     ports:
       - "19389:389"
     volumes:
       - v3-openldap-data:/var/lib/ldap
       - v3-openldap-config:/etc/ldap/slapd.d
+      - ./ldap:/seed-ldif
     networks: [v3-net]
 
   stalwart:
@@ -219,11 +259,15 @@ services:
     image: livekit/livekit-server:v1.9
     container_name: v3-livekit
     restart: unless-stopped
-    command: ["--dev", "--bind", "0.0.0.0"]
-    environment:
-      LIVEKIT_KEYS: "devkey: devsecret_v3_changeme_32chars_minimum"
+    # YAML 설정으로 포트를 호스트와 1:1 매핑. ICE candidate 가 advertise 하는
+    # 포트는 컨테이너 내부 포트이므로 호스트 매핑과 일치시켜야 브라우저 도달 가능.
+    command: ["--config", "/etc/livekit.yaml", "--node-ip", "127.0.0.1"]
+    volumes:
+      - ./livekit.yaml:/etc/livekit.yaml:ro
     ports:
-      - "19880:7880"
+      - "19880:19880"     # WebSocket signaling
+      - "19881:19881"     # RTC TCP fallback
+      - "19882:19882/udp" # RTC UDP media
     networks: [v3-net]
 
   backend-core:
@@ -242,7 +286,7 @@ services:
       REDIS_HOST: redis
       REDIS_PORT: 6379
       REDIS_PASSWORD: v3_redis_pass
-      KEYCLOAK_ISSUER_URI: http://keycloak:8080/realms/openplatform-v3
+      KEYCLOAK_ISSUER_URI: http://kc.localtest.me:19281/realms/openplatform-v3
       MINIO_ENDPOINT: http://minio:9000
       MINIO_ACCESS_KEY: v3minio
       MINIO_SECRET_KEY: v3minio_pass
@@ -258,6 +302,8 @@ services:
       keycloak:
         condition: service_started
     networks: [v3-net]
+    extra_hosts:
+      - "kc.localtest.me:host-gateway"
 
   backend-bff:
     build:
@@ -267,11 +313,14 @@ services:
     restart: unless-stopped
     environment:
       SPRING_PROFILES_ACTIVE: docker
-      KEYCLOAK_ISSUER_URI: http://keycloak:8080/realms/openplatform-v3
+      KEYCLOAK_ISSUER_URI: http://kc.localtest.me:19281/realms/openplatform-v3
       MATTERMOST_URL: http://mattermost:8065
       STALWART_URL: http://stalwart:8080
       WIKIJS_URL: http://wikijs:3000
       LIVEKIT_URL: http://livekit:7880
+      # 브라우저가 직접 접근할 LiveKit WS 엔드포인트 (포트 매핑 19880).
+      # /api/bff/video/config 가 이 값을 그대로 클라이언트로 반환한다.
+      LIVEKIT_PUBLIC_WS_URL: ws://localhost:19880
       LIVEKIT_API_KEY: devkey
       LIVEKIT_API_SECRET: devsecret_v3_changeme_32chars_minimum
       MINIO_ENDPOINT: http://minio:9000
@@ -284,6 +333,8 @@ services:
       keycloak:
         condition: service_started
     networks: [v3-net]
+    extra_hosts:
+      - "kc.localtest.me:host-gateway"
 
   ui-frontend:
     build:

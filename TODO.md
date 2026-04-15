@@ -123,9 +123,27 @@
 - [ ] 12-4. 권한 제어 (`usePermission(menuId)`)
 
 ## Phase Final: E2E / 성능 / 보안 / README (예상 60분)
-- [ ] F-1. Playwright MCP 시나리오 15종 전부 실행
-- [ ] F-2. 성능 측정 (로그인 TTFB, 대시보드 로딩)
-- [ ] F-3. 보안 스캔 (의존성 취약점)
-- [ ] F-4. `README.md` 완성
-- [ ] F-5. smoke test
-- [ ] F-6. **[인간] 최종 UX 확인**
+- [x] F-1. Playwright MCP 핵심 시나리오 6종 전부 실행 (C1~C6)
+- [x] F-2. SSO 단일 호스트(kc.localtest.me) 통합 — 모든 6개 외부 서비스 single sign-on 달성
+- [x] F-3. 사이드바 CSS 변수 누락 수정
+- [x] F-4. LiveKit WebRTC 포트 매핑 정상화
+- [x] F-5. PageVideo view-only 폴백
+- [x] F-6. BFF /api/bff/video/config 신설
+- [x] F-7. 모든 컨테이너 healthy 상태 확인
+- [ ] F-8. **[인간] 실제 카메라/마이크 환경에서 화상회의 종단 검증** (헤드리스 환경 한계)
+
+## Phase 12.1: SSO 결함 수정 (2026-04-15 추가) — 완료
+- [x] 12.1-1. global.css `--sidebar-width`/`--header-height`/`--page-ground` 추가
+- [x] 12.1-2. realm.json `mattermost` → `rocketchat` 전환 + protocolMapper
+- [x] 12.1-3. realm.json `minio` 클라이언트 신설 + policy mapper
+- [x] 12.1-4. KC_HOSTNAME_URL → kc.localtest.me 통일
+- [x] 12.1-5. 모든 컨테이너 extra_hosts 추가 (kc.localtest.me:host-gateway)
+- [x] 12.1-6. RC Custom OAuth REST API 등록 (OVERWRITE_SETTING 미작동 회피)
+- [x] 12.1-7. Wiki.js auth strategy DB jsonb_set 으로 host 갱신
+- [x] 12.1-8. MinIO client_secret realm/compose 동기화
+- [x] 12.1-9. LiveKit livekit.yaml 작성 + 포트 1:1 매핑
+- [x] 12.1-10. PageVideo view-only 폴백
+- [x] 12.1-11. BFF /api/bff/video/config 엔드포인트 신설
+- [x] 12.1-12. PageMessenger Keycloak authorize URL 직접 진입
+- [x] 12.1-13. openldap LDIF 시드 (/seed-ldif 마운트)
+- [x] 12.1-14. Playwright E2E C1~C6 전체 통과

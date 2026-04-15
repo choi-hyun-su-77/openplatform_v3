@@ -62,9 +62,12 @@ function setRemoteVideo(sid: string, el: any) {
 async function joinRoom() {
   loading.value = true;
   try {
+    // BFF 가 token 과 함께 wsUrl 을 반환한다. 환경변수 fallback 도 유지.
     const tokRes = await axios.post('/api/bff/video/token', { roomName: roomName.value, canPublish: true });
     const token = tokRes.data.token;
-    const serverUrl = (import.meta as any).env.VITE_LIVEKIT_URL || 'ws://localhost:19880';
+    const serverUrl: string = tokRes.data.wsUrl
+      || (import.meta as any).env.VITE_LIVEKIT_URL
+      || 'ws://localhost:19880';
 
     room = new Room({ adaptiveStream: true, dynacast: true });
 
@@ -83,16 +86,24 @@ async function joinRoom() {
 
     await room.connect(serverUrl, token);
 
-    const tracks = await createLocalTracks({ audio: true, video: true });
-    for (const t of tracks) {
-      if (t.kind === Track.Kind.Audio) {
-        localAudio = t as LocalAudioTrack;
-        await room.localParticipant.publishTrack(t);
+    // 카메라/마이크가 없거나 권한이 거부된 환경에서도 룸 입장 자체는 성공해야 한다.
+    // 디바이스 획득 실패는 view-only 로 폴백하고 사용자에게 알린다.
+    try {
+      const tracks = await createLocalTracks({ audio: true, video: true });
+      for (const t of tracks) {
+        if (t.kind === Track.Kind.Audio) {
+          localAudio = t as LocalAudioTrack;
+          await room.localParticipant.publishTrack(t);
+        }
+        if (t.kind === Track.Kind.Video) {
+          localVideo = t as LocalVideoTrack;
+          await room.localParticipant.publishTrack(t);
+        }
       }
-      if (t.kind === Track.Kind.Video) {
-        localVideo = t as LocalVideoTrack;
-        await room.localParticipant.publishTrack(t);
-      }
+    } catch (mediaErr: any) {
+      console.warn('미디어 디바이스 미사용 (view-only 모드):', mediaErr?.message || mediaErr);
+      micOn.value = false;
+      camOn.value = false;
     }
     connected.value = true;
     await nextTick();

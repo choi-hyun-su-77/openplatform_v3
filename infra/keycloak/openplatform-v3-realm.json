@@ -46,21 +46,74 @@
       "bearerOnly": true
     },
     {
-      "clientId": "mattermost",
+      "clientId": "rocketchat",
       "enabled": true,
       "publicClient": false,
-      "secret": "CHANGE_ME_KEYCLOAK_CLIENT_SECRET",
+      "secret": "rc_v3_keycloak_secret_2026_long_enough",
       "standardFlowEnabled": true,
-      "redirectUris": ["http://localhost:19065/*"],
-      "webOrigins": ["http://localhost:19065"]
+      "directAccessGrantsEnabled": false,
+      "rootUrl": "http://localhost:19065",
+      "redirectUris": [
+        "http://localhost:19065/_oauth/keycloak",
+        "http://localhost:19065/*"
+      ],
+      "webOrigins": ["http://localhost:19065"],
+      "protocolMappers": [
+        {
+          "name": "username-mapper",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-property-mapper",
+          "config": {
+            "user.attribute": "username",
+            "claim.name": "preferred_username",
+            "jsonType.label": "String",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true"
+          }
+        }
+      ]
     },
     {
       "clientId": "wiki-js",
       "enabled": true,
       "publicClient": false,
-      "secret": "CHANGE_ME_WIKIJS_SECRET",
+      "secret": "wiki_v3_keycloak_secret_2026_long_enough",
       "standardFlowEnabled": true,
-      "redirectUris": ["http://localhost:19001/*"]
+      "rootUrl": "http://localhost:19001",
+      "redirectUris": [
+        "http://localhost:19001/login/*/callback",
+        "http://localhost:19001/*"
+      ],
+      "webOrigins": ["http://localhost:19001"]
+    },
+    {
+      "clientId": "minio",
+      "enabled": true,
+      "publicClient": false,
+      "secret": "minio_v3_keycloak_secret_2026_long_enough",
+      "standardFlowEnabled": true,
+      "rootUrl": "http://localhost:19901",
+      "redirectUris": [
+        "http://localhost:19901/oauth_callback",
+        "http://localhost:19901/*"
+      ],
+      "webOrigins": ["http://localhost:19901"],
+      "protocolMappers": [
+        {
+          "name": "policy-mapper",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-hardcoded-claim-mapper",
+          "config": {
+            "claim.name": "policy",
+            "claim.value": "consoleAdmin",
+            "jsonType.label": "String",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true"
+          }
+        }
+      ]
     },
     {
       "clientId": "livekit",
@@ -73,6 +126,7 @@
       "username": "admin",
       "enabled": true,
       "email": "admin@v3.local",
+      "emailVerified": true,
       "firstName": "Admin",
       "lastName": "User",
       "credentials": [{ "type": "password", "value": "admin", "temporary": false }],
@@ -82,6 +136,7 @@
       "username": "user1",
       "enabled": true,
       "email": "user1@v3.local",
+      "emailVerified": true,
       "firstName": "사용자",
       "lastName": "일",
       "credentials": [{ "type": "password", "value": "user1", "temporary": false }],

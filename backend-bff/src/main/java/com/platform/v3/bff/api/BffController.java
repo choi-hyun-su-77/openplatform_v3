@@ -1,6 +1,7 @@
 package com.platform.v3.bff.api;
 
 import com.platform.v3.bff.port.*;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.web.bind.annotation.*;
@@ -11,6 +12,9 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/bff")
 public class BffController {
+
+    @Value("${livekit.public-ws-url:ws://localhost:19880}")
+    private String livekitPublicWsUrl;
 
     private final IdentityPort identityPort;
     private final MessagingPort messagingPort;
@@ -89,7 +93,17 @@ public class BffController {
         String room = (String) body.get("roomName");
         boolean canPublish = Boolean.TRUE.equals(body.getOrDefault("canPublish", true));
         String token = videoPort.issueToken(room, username(auth), canPublish);
-        return Map.of("token", token, "room", room);
+        return Map.of("token", token, "room", room, "wsUrl", livekitPublicWsUrl);
+    }
+
+    /**
+     * 브라우저가 LiveKit 서버에 직접 연결할 WebSocket 엔드포인트를 반환한다.
+     * 백엔드는 docker 내부 http://livekit:7880 을 알지만, 브라우저는 ws://localhost:19880 을
+     * 사용해야 하므로 환경변수 LIVEKIT_PUBLIC_WS_URL 을 별도로 노출한다.
+     */
+    @GetMapping("/video/config")
+    public Map<String, Object> videoConfig() {
+        return Map.of("wsUrl", livekitPublicWsUrl);
     }
 
     @GetMapping("/storage/presigned")

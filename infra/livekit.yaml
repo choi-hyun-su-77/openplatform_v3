@@ -1,0 +1,11 @@
+port: 19880
+bind_addresses:
+  - 0.0.0.0
+rtc:
+  tcp_port: 19881
+  udp_port: 19882
+  use_external_ip: false
+keys:
+  devkey: devsecret_v3_changeme_32chars_minimum
+log_level: info
+development: true

@@ -8,7 +8,7 @@
       <div class="info">
         <h3>Keycloak SSO 로 메신저 열기</h3>
         <p>브라우저에 현재 로그인된 Keycloak 세션이 재사용됩니다.<br/>
-        Mattermost 로그인 페이지에서 "GitLab 로 로그인" 버튼을 클릭하면 즉시 통과합니다.</p>
+        Rocket.Chat 의 "Keycloak SSO" Custom OAuth 플로우로 자동 진입합니다.</p>
         <Button label="메신저 열기" icon="pi pi-external-link" @click="open" severity="primary" size="large" />
       </div>
     </div>
@@ -17,9 +17,15 @@
 
 <script setup lang="ts">
 import Button from 'primevue/button';
-// Mattermost TE 7.10 의 GitLab OAuth 경로 (Keycloak 을 GitLab provider 로 재사용)
-const base = import.meta.env.VITE_MATTERMOST_URL || 'http://localhost:19065';
-const ssoUrl = `${base}/oauth/gitlab/login`;
+// Rocket.Chat Custom OAuth 'keycloak' 콜백 경로: /_oauth/keycloak
+// Keycloak authorize 엔드포인트로 직접 진입하여 redirect_uri 로 Rocket.Chat 로그인 완성.
+const rcBase = (import.meta as any).env.VITE_ROCKETCHAT_URL || 'http://localhost:19065';
+const kcBase = (import.meta as any).env.VITE_KEYCLOAK_URL || 'http://kc.localtest.me:19281';
+const realm = 'openplatform-v3';
+const clientId = 'rocketchat';
+const redirectUri = encodeURIComponent(`${rcBase}/_oauth/keycloak`);
+const state = encodeURIComponent(btoa(JSON.stringify({ loginStyle: 'redirect', redirectUrl: `${rcBase}/home`, credentialToken: '' })));
+const ssoUrl = `${kcBase}/realms/${realm}/protocol/openid-connect/auth?response_type=code&client_id=${clientId}&redirect_uri=${redirectUri}&scope=openid%20profile%20email&state=${state}`;
 function open() { window.open(ssoUrl, '_blank'); }
 </script>
 

@@ -13,7 +13,7 @@ let _kc: KeycloakInstance | null = null;
 export async function initKeycloak(): Promise<KeycloakInstance> {
   if (_kc) return _kc;
   const kc = new Keycloak({
-    url: import.meta.env.VITE_KEYCLOAK_URL || 'http://localhost:19281',
+    url: import.meta.env.VITE_KEYCLOAK_URL || 'http://kc.localtest.me:19281',
     realm: import.meta.env.VITE_KEYCLOAK_REALM || 'openplatform-v3',
     clientId: import.meta.env.VITE_KEYCLOAK_CLIENT || 'v3-ui'
   });

@@ -1,6 +1,18 @@
 :root {
   --v3-primary: #3b82f6;
   --v3-bg: #f8fafc;
+  /* 레이아웃 변수 — LayoutDefault/Sidebar/Header 가 참조한다.
+     이 값이 정의되지 않으면 사이드바 너비/헤더 높이가 0 이 되어
+     사이드바가 사라지거나 좌측 메뉴 위치가 비정상으로 보인다. */
+  --sidebar-width: 260px;
+  --header-height: 56px;
+  --page-ground: #f1f5f9;
+}
+
+html, body, #app {
+  margin: 0;
+  padding: 0;
+  height: 100%;
 }
 
 body {
