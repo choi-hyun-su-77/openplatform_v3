@@ -1,5 +1,16 @@
 # 판단 이력 (개발자 검토용)
 
+## [2026-04-15 19:55] Phase 12.2 — 후속 정리 (E1~E7)
+- **E1 감사**: TODO.md 체크박스 대부분이 스테일. 실제 상태는 24 DONE / 4 STUB / 1 MISSING.
+  - MISSING: `NotificationPort` 인터페이스 — 바로 추가 (bff/port/NotificationPort.java 4개 메서드)
+  - STUB: PageBoard CRUD 폼, PageMessenger/Mail/Wiki 런처 (iframe 미채택)
+  - STUB 결정: 런처 방식(외부 탭 열기 + Keycloak SSO 자동 완주)은 동일 UX 를 제공하며 iframe 보다 안정적이어서 현재 전략 유지. 추후 이슈 발생 시 재검토.
+- **E2 보안 원복**: `v3-ui` 클라이언트 `directAccessGrantsEnabled=false` 로 kcadm update 수행. E2E 에서 사용한 password grant 경로 제거.
+- **E3 Wiki.js autoEnrollGroups**: `[1]`(Administrators) → `[2]`(Guests) 로 변경. 운영 보수적 기본값. 관리자 권한은 개별 승격으로 부여.
+- **E4 신규 구현**: NotificationPort.java (stub 인터페이스만 — 실제 구현은 backend-core 알림 API 가 이미 존재하므로 BFF Adapter 는 필요 시 추가)
+- **E5 TODO.md 재동기화**: 24개 완료 항목 `[x]`, 4개 STUB 는 `[~]` 또는 `[ ]` 로 명확화.
+- **E6 F-8 가이드**: `docs/video-manual-check.md` 작성 — 1인/2인 테스트 절차 + Type A 통과 기준 + 실패시 점검 순서.
+
 ## [2026-04-15 19:50] Phase 12 — SSO 통합 결함 일괄 수정
 - **상황**: 사용자가 일부 서비스 SSO 미작동(메신저/MinIO/메일/화상회의) + 사이드바 깨짐 보고
 - **수정 내역**:
