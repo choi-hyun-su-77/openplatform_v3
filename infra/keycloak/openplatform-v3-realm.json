@@ -78,7 +78,7 @@
       "clientId": "wiki-js",
       "enabled": true,
       "publicClient": false,
-      "secret": "wiki_v3_keycloak_secret_2026_long_enough",
+      "secret": "C45Mb5Fu6kVGwyk9i8cpxrAFi1lm6Nbm",
       "standardFlowEnabled": true,
       "rootUrl": "http://localhost:19001",
       "redirectUris": [
