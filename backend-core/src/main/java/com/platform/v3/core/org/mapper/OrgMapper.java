@@ -26,4 +26,15 @@ public interface OrgMapper {
                                              @Param("drafterId") Long drafterId);
 
     Map<String, Object> selectDeptHead(@Param("deptId") Long deptId);
+
+    /**
+     * Keycloak preferred_username 으로 org_employee 를 조회하여
+     * employee_id / employee_no / dept_id / dept_name / position_name / position_level 을 반환.
+     * v3 의 identity 매핑 핵심 — BFF `/api/bff/identity/me` 와
+     * DataSetController `currentUser` 정규화에서 사용.
+     */
+    Map<String, Object> findEmployeeByKeycloakUserId(@Param("keycloakUserId") String keycloakUserId);
+
+    /** employee_no 로 조회 — NotificationService 가 userNo → employee_id 변환 시 사용. */
+    Map<String, Object> findEmployeeByNo(@Param("employeeNo") String employeeNo);
 }

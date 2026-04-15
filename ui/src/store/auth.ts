@@ -12,7 +12,7 @@ import axios from 'axios';
 import { initKeycloak, getKeycloak } from '@/keycloak';
 
 interface UserInfo {
-  userId: string;
+  userId: string;           // Keycloak preferred_username (예: "admin")
   userName: string;
   userNameEn?: string;
   email: string;
@@ -20,6 +20,12 @@ interface UserInfo {
   department?: string;
   roles: string[];
   preferredLocale?: string;
+  // v3 확장: org_employee 조인 결과 (Phase 0)
+  employeeNo?: string;      // 사번 (예: "E0001")
+  employeeId?: number;      // DB PK
+  deptId?: number;
+  positionName?: string;
+  positionLevel?: number;
 }
 
 interface MenuItem {
@@ -104,15 +110,35 @@ export const useAuthStore = defineStore('auth', () => {
   async function loadUserInfo() {
     if (!accessToken.value) return;
     try {
+      // /me 는 Keycloak userinfo + org_employee 병합 필드를 반환
       const me = await axios.get('/api/bff/identity/me');
       const data = (me.data as any) || {};
+      // BFF 가 org_employee 를 병합해서 주지 않는 경우 (fallback): 직접 DataSet 호출
+      let emp = data.employee || null;
+      if (!emp) {
+        try {
+          const r = await axios.post('/api/dataset/search', {
+            serviceName: 'org/findMyEmployee',
+            datasets: { ds_search: {} }
+          });
+          const rows = r.data?.data?.ds_me?.rows || [];
+          emp = rows[0] || null;
+        } catch {
+          emp = null;
+        }
+      }
       user.value = {
         userId: data.preferred_username || data.sub,
         userName: data.name || data.preferred_username || 'User',
-        email: data.email || '',
-        deptName: data.dept_name || '',
+        email: data.email || emp?.email || '',
+        deptName: data.dept_name || emp?.deptName || '',
         roles: (data.realm_access && data.realm_access.roles) || [],
-        preferredLocale: data.locale || 'ko'
+        preferredLocale: data.locale || 'ko',
+        employeeNo: emp?.employeeNo || undefined,
+        employeeId: emp?.employeeId != null ? Number(emp.employeeId) : undefined,
+        deptId: emp?.deptId != null ? Number(emp.deptId) : undefined,
+        positionName: emp?.positionName || undefined,
+        positionLevel: emp?.positionLevel != null ? Number(emp.positionLevel) : undefined
       };
       // 메뉴는 backend-core 의 menu/searchByUser 에서 역할 기반 조회
       try {

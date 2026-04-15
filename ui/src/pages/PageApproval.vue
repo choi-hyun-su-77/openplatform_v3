@@ -27,6 +27,9 @@ import { ref, onMounted } from 'vue';
 import axios from 'axios';
 import DataTable from 'primevue/datatable';
 import Column from 'primevue/column';
+import { useAuthStore } from '@/store/auth';
+
+const authStore = useAuthStore();
 
 const boxes = [
   { code: 'DRAFT',       label: '임시저장', icon: 'pi pi-pencil'   },
@@ -46,9 +49,12 @@ const documents = ref<any[]>([]);
 async function selectBox(code: string) {
   activeBox.value = code;
   try {
+    // 현재 로그인 사용자의 employee_no 를 사용. auth store 에 employeeNo 없으면
+    // DataSetController 가 fallback (Keycloak username → employee_no) 으로 처리.
+    const userNo = authStore.user?.employeeNo || authStore.user?.userId || '';
     const res = await axios.post('/api/dataset/search', {
       serviceName: 'approval/searchInbox',
-      datasets: { ds_search: { boxType: code, userId: 1 } }
+      datasets: { ds_search: { boxType: code, userNo, keyword: '' } }
     });
     documents.value = res.data?.data?.ds_inbox?.rows || [];
   } catch {

@@ -111,6 +111,93 @@
 - [x] F-7. 모든 컨테이너 healthy 상태 확인
 - [ ] F-8. **[인간] 실제 카메라/마이크 환경에서 화상회의 종단 검증** (헤드리스 환경 한계)
 
+## Phase 13: 업무용 앱 프로덕션 (2026-04-16 ~) — 진행중
+
+> 상세 플랜: `C:\Users\hyunsu_choi\.claude\plans\magical-fluttering-wombat.md`
+> 핸즈오프: `SESSION_HANDOFF.md`
+
+### Phase 0 — Identity & Schema 기반 (P0 blocker, 6h) — 완료
+- [x] 0-1. V8__approval_and_extras.sql (ap_document/line/attachment/delegation/history + bd_comment + cm_holiday + FORM_CODE/BOARD_TYPE seed)
+- [x] 0-2. OrgMapper.findEmployeeByKeycloakUserId / findByNo
+- [x] 0-3. KeycloakIdentityAdapter org_employee 병합 (frontend fallback 채택, BFF 변경 없음)
+- [x] 0-4. NotificationService.notifyByUserNo (하드코딩 10L 제거)
+- [x] 0-5. DataSetController currentUser 자동 정규화 (Keycloak username → employee_no, MyBatis camelCase 인지)
+- [x] 0-6. auth.ts UserInfo 확장 (employeeNo/employeeId/deptId/positionName/positionLevel)
+- [x] 0-7. PageApproval/Dashboard/Calendar 하드코딩 ID 제거
+- [x] 0-8. Clean DB 검증 + Playwright /approval 200 + delegate 정규화 검증
+
+### Phase A — 결재 프로덕션 (24h) — 백엔드 100% / 프론트 30%
+- [x] A-1. ApprovalService 6 신규 메서드 (withdraw/resubmit/delegate/uploadAttachment/listAttachments/countPending) + searchHistory + recordHistory helper
+- [x] A-2. ApprovalMapper XML 9 신규 SQL (insertAttachment/selectAttachmentsByDoc/insertHistory/selectHistoryByDoc/insertDelegation+CAST/cloneDocumentForResubmit/updateDocumentContent/resetLinesForWithdraw/deleteAttachment) + selectApproversForDocFromDmn 의 HR/IT 분기
+- [x] A-3 관련 backend 검증: countPending/searchHistory/listAttachments/delegate/withdraw smoke test 통과
+- [x] A-9. useApproval.ts composable (13 메서드)
+- [x] A-6. ApprovalLineTimeline.vue (PrimeVue Timeline)
+- [x] A-7. ApprovalActionBar.vue (승인/반려/회수/재상신/대결 + 다이얼로그)
+- [x] A-10. backend-core 재빌드 + 재기동
+- [ ] A-3. PageApproval.vue 재작성 (CrudToolbar + SearchPanel + 9-box + paged DataTable + DetailDialog 호스팅)
+- [ ] A-4. ApprovalDetailDialog.vue (4탭: 내용/결재선/첨부/이력 + ActionBar footer)
+- [ ] A-5. ApprovalSubmitDialog.vue (양식/제목/금액/본문 + DMN 결재선 미리보기 + 첨부)
+  - [ ] 백엔드 사이드 신규: `approval/previewApprovers` DataSet 서비스
+- [ ] A-8. ApprovalAttachmentList.vue (presigned PUT/GET 통한 업/다운/삭제)
+  - [ ] 백엔드 사이드 신규: `approval/deleteAttachment` DataSet 서비스
+- [ ] A-11. Playwright MCP A1~A3 (상신→승인 / 반려→재상신 / 회수)
+
+### Phase E — Dashboard + SSE 알림 센터 (8h, A 와 병행) — 0%
+- [ ] E-1. NotificationBell.vue (헤더 우상단, unread 배지, 최근 10건 dropdown)
+- [ ] E-2. useNotificationSse.ts composable (EventSource ?token= 쿼리)
+- [ ] E-3. notification.ts Pinia store
+- [ ] E-4. NotificationController SSE ?token= 인증 (쿼리 토큰을 Authorization 헤더로 변환하는 OncePerRequestFilter)
+- [ ] E-5. notification/getBadgeCount DataSet 서비스
+- [ ] E-6. PageDashboard 위젯 click-through navigation
+- [ ] E-7. 2탭 SSE 전파 Playwright 검증
+
+### Phase B — 게시판 풀 CRUD (14h) — 0%
+- [ ] B-1. BoardService 확장: searchDetail (viewCount++) / deletePost / saveComment / listComments / uploadAttachment
+- [ ] B-2. BoardMapper XML 확장
+- [ ] B-3. PageBoard.vue 재작성 (카테고리 필터 + paged DataTable + 행 클릭 → DetailDialog)
+- [ ] B-4. BoardDetailDialog.vue (마크다운 readonly + 댓글)
+- [ ] B-5. BoardFormDialog.vue (md-editor-v3 + 첨부)
+- [ ] B-6. CommentThread.vue (1단계 대댓글)
+- [ ] B-7. Playwright B 시나리오
+
+### Phase C — 캘린더 풀 CRUD (10h) — 0%
+- [ ] C-1. CalendarService.deleteEvent + searchHolidays
+- [ ] C-2. PageCalendar.vue 핸들러 (eventClick/dateSelect/eventDrop/eventResize)
+- [ ] C-3. CalendarEventDialog.vue (제목/시간/scope/반복 규칙)
+- [ ] C-4. cm_holiday 배경 이벤트 표시
+- [ ] C-5. Playwright C 시나리오
+
+### Phase D — 조직도 강화 (6h) — 0%
+- [ ] D-1. PageOrg.vue 검색 debounced + 카드 클릭 핸들러
+- [ ] D-2. EmployeeDetailDialog.vue (아바타 + 연락처 + 빠른 액션 3종)
+- [ ] D-3. (선택) 조직도 PNG 내보내기 (html2canvas)
+
+### Phase H — 메일 포탈 내부 UI (18h) — 0%
+- [ ] H-1. StalwartMailAdapter JMAP 전면 구현 (getSession/listMailboxes/listEmails/getEmail/sendEmail/saveDraft/uploadAttachment)
+- [ ] H-2. BFF /api/bff/mail/* 확장
+- [ ] H-3. PageMail.vue 3단 레이아웃 재작성
+- [ ] H-4. MailboxTree / EmailList / EmailDetail / ComposeDialog 4 컴포넌트
+- [ ] H-5. JMAP accountId 매핑 (서비스 계정 옵션 A)
+- [ ] H-6. Playwright H 시나리오
+
+### Phase F — 공통 인프라 + i18n 4언어 (10h, 전 Phase 병행) — 0%
+- [ ] F-1. CrudToolbar 전 페이지 적용 (Approval/Board/Calendar/Org)
+- [ ] F-2. Router 권한 가드 + /403 라우트
+- [ ] F-3. i18n ko.json (1차 기준, 핵심 ~200 키)
+- [ ] F-4. i18n en.json (번역기 초벌 + 감수)
+- [ ] F-5. i18n zh.json
+- [ ] F-6. i18n ja.json
+- [ ] F-7. LoadingSkeleton.vue 공통 컴포넌트
+- [ ] F-8. interceptor.ts 글로벌 에러 toast
+- [ ] F-9. v3-ui directAccessGrantsEnabled=false 복구 (운영 보안)
+
+### Phase 13 Final — 회귀 + 클린 부팅 검증 (6h) — 0%
+- [ ] FINAL-1. 기존 C1~C6 SSO 시나리오 재실행
+- [ ] FINAL-2. docker compose down + volume rm + up → Flyway V1~V8 적용 검증
+- [ ] FINAL-3. 100h 작업 분량 회귀 종합 보고서
+
+---
+
 ## Phase 12.1: SSO 결함 수정 (2026-04-15 추가) — 완료
 - [x] 12.1-1. global.css `--sidebar-width`/`--header-height`/`--page-ground` 추가
 - [x] 12.1-2. realm.json `mattermost` → `rocketchat` 전환 + protocolMapper

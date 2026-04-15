@@ -52,6 +52,29 @@ public class OrgService {
         return Map.of("ds_approvers", DataSetSupport.rows(orgMapper.selectApproverCandidates(keyword, deptId)));
     }
 
+    /**
+     * 로그인 사용자 본인의 org_employee 정보 반환.
+     * DataSetController 가 이미 Keycloak username → employee_no 로 정규화했으므로
+     * currentUser 는 employee_no (예: "E0001") 또는 Keycloak username (fallback) 둘 중 하나.
+     * 두 경우 모두 처리 — 먼저 employee_no 로 조회, 실패 시 keycloak_user_id 로 재시도.
+     *
+     * BFF `/api/bff/identity/me` 가 이 서비스를 호출하여 employeeNo/employeeId/deptId 등을 병합한다.
+     */
+    @DataSetServiceMapping("org/findMyEmployee")
+    public Map<String, Object> findMyEmployee(Map<String, Object> datasets, String currentUser) {
+        if (currentUser == null || currentUser.isBlank() || "anonymous".equals(currentUser)) {
+            return Map.of("ds_me", DataSetSupport.rows(List.of()));
+        }
+        Map<String, Object> emp = orgMapper.findEmployeeByNo(currentUser);
+        if (emp == null) {
+            emp = orgMapper.findEmployeeByKeycloakUserId(currentUser);
+        }
+        if (emp == null) {
+            return Map.of("ds_me", DataSetSupport.rows(List.of()));
+        }
+        return Map.of("ds_me", DataSetSupport.rows(List.of(emp)));
+    }
+
     public List<Map<String, Object>> resolveApproversByRoles(List<String> roles, Long drafterId) {
         List<Map<String, Object>> resolved = new ArrayList<>();
         for (String role : roles) {

@@ -16,6 +16,9 @@ import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
 import interactionPlugin from '@fullcalendar/interaction';
 import SelectButton from 'primevue/selectbutton';
+import { useAuthStore } from '@/store/auth';
+
+const authStore = useAuthStore();
 
 const scopes = [
   { label: '전체', value: 'ALL' },
@@ -47,10 +50,12 @@ const calendarOptions = computed(() => ({
 }));
 
 async function load() {
+  if (!authStore.user) { await authStore.loadUserInfo(); }
+  const ownerId = authStore.user?.employeeId;
   const now = new Date();
   const start = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString();
   const end = new Date(now.getFullYear(), now.getMonth() + 2, 0).toISOString();
-  const req: any = { startDt: start, endDt: end, ownerId: 10 };
+  const req: any = { startDt: start, endDt: end, ownerId };
   if (scope.value !== 'ALL') req.eventType = scope.value;
   const res = await axios.post('/api/dataset/search', {
     serviceName: 'calendar/searchEvents',

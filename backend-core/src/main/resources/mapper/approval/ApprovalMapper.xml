@@ -133,6 +133,7 @@
         WHERE e.status = 'ACTIVE'
           AND p.position_level &lt;=
               <choose>
+                  <when test="formCode != null and (formCode == 'HR' or formCode == 'IT')">2</when>
                   <when test="amount != null and amount &gt;= 10000000">1</when>
                   <when test="amount != null and amount &gt;= 1000000">2</when>
                   <otherwise>3</otherwise>
@@ -140,4 +141,87 @@
         ORDER BY p.position_level
         LIMIT 3
     </select>
+
+    <!-- ===== Phase A 신규 ===== -->
+
+    <insert id="insertAttachment" parameterType="map" useGeneratedKeys="true"
+            keyProperty="attachId" keyColumn="attach_id">
+        INSERT INTO platform_v3.ap_attachment
+            (doc_id, object_key, filename, size_bytes, mime_type, uploader_no)
+        VALUES
+            (#{docId}, #{objectKey}, #{filename}, #{sizeBytes}, #{mimeType}, #{uploaderNo})
+    </insert>
+
+    <select id="selectAttachmentsByDoc" resultType="map">
+        SELECT attach_id, doc_id, object_key, filename, size_bytes, mime_type,
+               uploader_no, uploaded_at
+        FROM platform_v3.ap_attachment
+        WHERE doc_id = #{docId}
+        ORDER BY uploaded_at
+    </select>
+
+    <delete id="deleteAttachment">
+        DELETE FROM platform_v3.ap_attachment WHERE attach_id = #{attachId}
+    </delete>
+
+    <insert id="insertHistory" parameterType="map">
+        INSERT INTO platform_v3.ap_history
+            (doc_id, line_id, action, actor_no, actor_name, comment)
+        VALUES
+            (#{docId}, #{lineId}, #{action}, #{actorNo}, #{actorName}, #{comment})
+    </insert>
+
+    <select id="selectHistoryByDoc" resultType="map">
+        SELECT history_id, doc_id, line_id, action, actor_no, actor_name, comment, acted_at
+        FROM platform_v3.ap_history
+        WHERE doc_id = #{docId}
+        ORDER BY acted_at
+    </select>
+
+    <insert id="insertDelegation" parameterType="map">
+        INSERT INTO platform_v3.ap_delegation
+            (delegator_no, delegatee_no, reason, from_date, to_date, active)
+        VALUES
+            (#{delegatorNo}, #{delegateeNo}, #{reason},
+             CAST(#{fromDate} AS DATE), CAST(#{toDate} AS DATE), TRUE)
+    </insert>
+
+    <select id="selectActiveDelegation" resultType="map">
+        SELECT delegation_id, delegator_no, delegatee_no, reason, from_date, to_date
+        FROM platform_v3.ap_delegation
+        WHERE delegator_no = #{delegatorNo}
+          AND active = TRUE
+          AND from_date &lt;= CURRENT_DATE
+          AND to_date   &gt;= CURRENT_DATE
+        ORDER BY from_date DESC
+        LIMIT 1
+    </select>
+
+    <insert id="cloneDocumentForResubmit" parameterType="map" useGeneratedKeys="true"
+            keyProperty="docId" keyColumn="doc_id">
+        INSERT INTO platform_v3.ap_document
+            (doc_title, form_code, drafter_no, drafter_name, drafter_dept,
+             status, content, amount, parent_doc_id, version, created_at, updated_at)
+        SELECT d.doc_title, d.form_code, d.drafter_no, d.drafter_name, d.drafter_dept,
+               'PENDING', COALESCE(#{content}, d.content),
+               COALESCE(#{amount}, d.amount),
+               d.doc_id, d.version + 1, NOW(), NOW()
+        FROM platform_v3.ap_document d
+        WHERE d.doc_id = #{sourceDocId}
+    </insert>
+
+    <update id="updateDocumentContent">
+        UPDATE platform_v3.ap_document
+        SET doc_title = COALESCE(#{docTitle}, doc_title),
+            content   = COALESCE(#{content}, content),
+            amount    = COALESCE(#{amount}, amount),
+            updated_at = NOW()
+        WHERE doc_id = #{docId}
+    </update>
+
+    <update id="resetLinesForWithdraw">
+        UPDATE platform_v3.ap_approval_line
+        SET status = 'PENDING', comment = NULL, acted_at = NULL, acted_by_no = NULL
+        WHERE doc_id = #{docId}
+    </update>
 </mapper>

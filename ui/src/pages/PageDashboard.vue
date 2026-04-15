@@ -50,10 +50,15 @@ const unreadCount = ref(0);
 const messengerUnread = ref(0);
 
 async function loadDashboard() {
+  // 로그인 사용자 정보가 없으면 로드 후 재시도
+  if (!auth.user) { await auth.loadUserInfo(); }
+  const employeeId = auth.user?.employeeId;
+  const employeeNo = auth.user?.employeeNo || auth.user?.userId || '';
+
   try {
     const today = await axios.post('/api/dataset/search', {
       serviceName: 'calendar/searchToday',
-      datasets: { ds_search: { ownerId: 10 } }
+      datasets: { ds_search: { ownerId: employeeId } }
     });
     todayEvents.value = today.data?.data?.ds_todayEvents?.rows || [];
   } catch (e) { console.warn('today events failed', e); }
@@ -69,7 +74,7 @@ async function loadDashboard() {
   try {
     const notif = await axios.post('/api/dataset/search', {
       serviceName: 'notification/searchList',
-      datasets: { ds_search: { recipientId: 10, unreadOnly: true } }
+      datasets: { ds_search: { recipientId: employeeId, unreadOnly: true } }
     });
     unreadCount.value = notif.data?.data?.ds_unreadCount?.count || 0;
   } catch (e) { console.warn('notifications failed', e); }
@@ -77,7 +82,7 @@ async function loadDashboard() {
   try {
     const inbox = await axios.post('/api/dataset/search', {
       serviceName: 'approval/searchInbox',
-      datasets: { ds_search: { boxType: 'PENDING' } }
+      datasets: { ds_search: { boxType: 'PENDING', userNo: employeeNo } }
     });
     pendingCount.value = inbox.data?.data?.ds_inbox?.rows?.length || 0;
   } catch (e) { console.warn('pending failed', e); }

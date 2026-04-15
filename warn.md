@@ -1,5 +1,14 @@
 # 판단 이력 (개발자 검토용)
 
+## [2026-04-16 00:50] Phase 13 (업무용 앱) Phase 0 + Phase A 백엔드 완료
+- **Identity 정규화 패턴 결정**: Keycloak `preferred_username` ↔ `org_employee.employee_no` 의 단일 매핑 경로를 `org_employee.keycloak_user_id` 컬럼으로 확정. `DataSetController.currentUser()` 가 모든 도메인 서비스에 employee_no 를 전달. 매핑 실패 시 fallback (username 그대로). MyBatis camelCase 변환을 인지하여 `emp.get("employeeNo")` 우선 lookup.
+- **V8 마이그레이션 호환성**: 런타임 DB 에 이미 ap_document/ap_approval_line 이 있는 상태에서도 동작하도록 `CREATE TABLE IF NOT EXISTS` + `ALTER TABLE ... ADD COLUMN IF NOT EXISTS` 패턴 사용. 클린 부팅과 기존 부팅 양쪽 지원. 이 결정 덕분에 Phase 0 에서 DB 재초기화 없이 마이그레이션 적용 가능.
+- **NotificationService.notifyByUserNo 신규**: 도메인 서비스가 employee_no 만 갖고 있어도 SSE 수신자(employee_id) 로 자동 변환. 기존 `notify(Long)` 은 유지하되 `recipientId == null` 조기 종료 추가. 모든 ApprovalService 호출은 `notifyByUserNo` 로 마이그레이션.
+- **BFF KeycloakIdentityAdapter 확장 미채택**: BFF 가 backend-core DB 에 직접 접근하지 않도록, frontend `auth.ts` 가 `/api/bff/identity/me` 호출 후 `data.employee` 가 비어있으면 `org/findMyEmployee` DataSet 호출 로 fallback. 이 패턴은 BFF 의 단순성을 유지하면서 frontend 만으로 employee 정보를 얻을 수 있게 함. 후속 turn 에서 BFF 응답 형식이 명확해지면 BFF 측 병합으로 옮길 수 있음.
+- **delegate INSERT 의 DATE 캐스팅 이슈**: PostgreSQL 가 string→DATE 자동 변환을 거부하여 `CAST(#{fromDate} AS DATE)` 명시 필요. MyBatis typeHandler 대신 SQL 측 캐스팅 채택 — 더 명시적이고 디버깅 용이.
+- **Phase A 의 4 컴포넌트 (DetailDialog/SubmitDialog/AttachmentList/PageApproval) 는 다음 세션으로 이연**: 이번 세션 (1시간 핸즈오프 제약) 에서 백엔드 + 프론트 헬퍼 (useApproval/Timeline/ActionBar) 까지 안정 체크포인트로 완료. SESSION_HANDOFF.md 에 다음 세션 시작 가이드 문서화.
+- **`v3-ui.directAccessGrantsEnabled=true` 재활성화**: E2E smoke test 용. Phase F-9 에서 false 로 복구해야 함.
+
 ## [2026-04-15 19:55] Phase 12.2 — 후속 정리 (E1~E7)
 - **E1 감사**: TODO.md 체크박스 대부분이 스테일. 실제 상태는 24 DONE / 4 STUB / 1 MISSING.
   - MISSING: `NotificationPort` 인터페이스 — 바로 추가 (bff/port/NotificationPort.java 4개 메서드)
