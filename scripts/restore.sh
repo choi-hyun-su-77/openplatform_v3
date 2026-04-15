@@ -6,7 +6,7 @@
 #
 # 주의:
 #   - backend-core, backend-bff 는 반드시 중단한 상태에서 실행
-#   - Keycloak, Wiki.js, Mattermost 는 복원 전후 재기동 필요
+#   - Keycloak, Wiki.js, Rocket.Chat 은 복원 전후 재기동 필요
 #   - 기존 데이터는 덮어써지므로 위험도 높음 → 운영 환경에서는 별도 확인 절차 필수
 # =============================================================================
 
@@ -122,13 +122,13 @@ fi
 # ─── 7. Rocket.Chat Mongo 복원 ───────────────────────────────────────────────
 log "[5/6] Rocket.Chat Mongo 복원..."
 if [[ -f "${SRC_DIR}/rocketchat-mongo.archive" ]] && container_exists v3-rocketchat-mongo; then
-    docker exec -i v3-rocketchat-mongo bash -c 'mongorestore --archive --drop' \
+    docker exec -i v3-mongo bash -c 'mongorestore --archive --drop' \
         < "${SRC_DIR}/rocketchat-mongo.archive" \
         2>>"${LOG}" \
         || warn "mongorestore 실패"
     log "    → rocketchat mongo 복원 완료"
 else
-    log "    → mongo 백업 없음 (mattermost 는 postgres 경유, 1번에서 복원됨)"
+    log "    → mongo 백업 없음 — 스킵"
 fi
 
 # ─── 8. Wiki.js DB 복원 ──────────────────────────────────────────────────────

@@ -23,8 +23,8 @@ UI 설계 및 Playwright E2E 테스트 근거.
 ## 7. 조직도 탐색
 부서 트리 → 직원 카드 클릭 → 연락처/메신저DM/메일 작성 바로가기.
 
-## 8. 메신저 (Mattermost)
-채널 목록 → 메시지 → DM → 파일 전송. Keycloak Federation(GitLab OAuth 트릭)으로 자동 로그인.
+## 8. 메신저 (Rocket.Chat)
+채널 목록 → 메시지 → DM → 파일 전송. Keycloak Custom OAuth 로 자동 로그인.
 
 ## 9. 웹메일 (Stalwart)
 받은편지함 → 스레드 → 작성/임시저장/발송. Keycloak LDAP Federation 인증.

@@ -24,7 +24,7 @@
 ## 외부 그룹웨어 서비스 (v3 전용)
 | 서비스 | 호스트 포트 | 비고 |
 |---|---|---|
-| Mattermost | 19065 | GitLab OAuth 트릭 → Keycloak |
+| Rocket.Chat | 19065 | Custom OAuth keycloak provider → Keycloak SSO |
 | Stalwart SMTP | 19025 | |
 | Stalwart IMAP | 19143 | |
 | Stalwart Admin | 19480 | |

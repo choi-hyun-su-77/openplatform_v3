@@ -5,8 +5,7 @@ CREATE SCHEMA IF NOT EXISTS platform_v3 AUTHORIZATION platform_v3;
 CREATE SCHEMA IF NOT EXISTS flowable_v3 AUTHORIZATION platform_v3;
 CREATE SCHEMA IF NOT EXISTS keycloak_v3 AUTHORIZATION platform_v3;
 
--- Mattermost 전용 DB
-CREATE DATABASE mattermost_v3 OWNER platform_v3;
+-- Rocket.Chat 은 Mongo 를 사용하므로 PostgreSQL DB 생성 불필요 (v3-mongo 컨테이너 별도)
 
 -- Wiki.js 전용 DB
 CREATE DATABASE wiki_v3 OWNER platform_v3;

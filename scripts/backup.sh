@@ -7,7 +7,7 @@
 #   2) MinIO      (v3-minio)           — mc mirror 로 모든 버킷 미러링
 #   3) Keycloak   (v3-keycloak)        — realm export (openplatform-v3)
 #   4) OpenLDAP   (v3-openldap)        — ldapsearch 로 LDIF dump
-#   5) Rocket.Chat/Mattermost (v3-mattermost) — Mongo dump (있을 경우)
+#   5) Rocket.Chat  (v3-mongo)         — mongodump 로 rocketchat DB 덤프
 #   6) Wiki.js    (v3-wikijs)          — sqlite 또는 pg dump
 # 결과: backups/v3-YYYYMMDD-HHMMSS.tar.gz
 # =============================================================================
@@ -108,22 +108,16 @@ else
     warn "v3-openldap 컨테이너 없음 — 스킵 (optional)"
 fi
 
-# ─── 5. Mattermost / Rocket.Chat Mongo dump ──────────────────────────────────
-log "[5/6] Mattermost DB dump (Mongo or Postgres)..."
-if container_exists v3-mattermost; then
-    # Mattermost 는 PG 를 사용하므로 v3-postgres 덤프에 포함되지만
-    # 독립 Mongo 컨테이너가 있다면 mongodump 수행
-    if container_exists v3-rocketchat-mongo; then
-        docker exec v3-rocketchat-mongo bash -c 'mongodump --archive' \
-            > "${WORK_DIR}/rocketchat-mongo.archive" \
-            2>>"${LOG}" \
-            || warn "mongodump 실패"
-        log "    → rocketchat mongodump 완료"
-    else
-        log "    → mattermost 는 postgres 에 저장됨 (1번 덤프 포함)"
-    fi
+# ─── 5. Rocket.Chat Mongo dump ────────────────────────────────────────────────
+log "[5/6] Rocket.Chat Mongo dump..."
+if container_exists v3-mongo; then
+    docker exec v3-mongo bash -c 'mongodump --archive --db=rocketchat' \
+        > "${WORK_DIR}/rocketchat-mongo.archive" \
+        2>>"${LOG}" \
+        || warn "mongodump 실패"
+    log "    → rocketchat mongodump 완료"
 else
-    warn "v3-mattermost 컨테이너 없음 — 스킵"
+    warn "v3-mongo 컨테이너 없음 — 스킵"
 fi
 
 # ─── 6. Wiki.js DB 백업 ──────────────────────────────────────────────────────

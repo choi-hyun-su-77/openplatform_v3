@@ -33,3 +33,4 @@ ui/node_modules/
 
 # 상태 파일 (warn/fatal 은 남기기)
 info.md
+infra/ldap/custom/

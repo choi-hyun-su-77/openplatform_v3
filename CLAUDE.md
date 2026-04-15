@@ -4,7 +4,7 @@
 
 ## 아키텍처
 - 옵션 C 하이브리드: v1 DataSet 도메인(backend-core) + v2 Port-Adapter(backend-bff) + ts-spring-fw UI 컴포넌트 복사(ui)
-- Keycloak 단일 SSO 허브, 6개 외부 서비스 Federation (Mattermost/Stalwart/LiveKit/Wiki.js/MinIO/포탈)
+- Keycloak 단일 SSO 허브, 5개 외부 서비스 Federation (Rocket.Chat/Stalwart/LiveKit/Wiki.js/MinIO) + v3 포탈 (kc.localtest.me 단일 호스트)
 
 ## 포트 대역
 v3 전용 19xxx + UI dev 25174. 자세한 할당은 `docs/port-allocation.md`.

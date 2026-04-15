@@ -122,8 +122,7 @@ services:
     extra_hosts:
       - "kc.localtest.me:host-gateway"
 
-  # Mattermost TE 는 OAuth 가 Enterprise 전용이라 Rocket.Chat 으로 교체.
-  # Rocket.Chat Community Edition 은 OAuth/OIDC 모두 완전 무료.
+  # Rocket.Chat Community Edition — OAuth/OIDC 완전 무료 (Custom OAuth 로 Keycloak 통합).
   rocketchat:
     image: registry.rocket.chat/rocketchat/rocket.chat:6.13.0
     container_name: v3-rocketchat
@@ -314,7 +313,7 @@ services:
     environment:
       SPRING_PROFILES_ACTIVE: docker
       KEYCLOAK_ISSUER_URI: http://kc.localtest.me:19281/realms/openplatform-v3
-      MATTERMOST_URL: http://mattermost:8065
+      ROCKETCHAT_URL: http://rocketchat:3000
       STALWART_URL: http://stalwart:8080
       WIKIJS_URL: http://wikijs:3000
       LIVEKIT_URL: http://livekit:7880

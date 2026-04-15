@@ -11,9 +11,9 @@ spring:
           jwk-set-uri: ${KEYCLOAK_JWK_URI:http://keycloak:8080/realms/openplatform-v3/protocol/openid-connect/certs}
 
 bff:
-  mattermost:
-    base-url: ${MATTERMOST_URL:http://localhost:19065}
-    admin-token: ${MATTERMOST_ADMIN_TOKEN:}
+  rocketchat:
+    base-url: ${ROCKETCHAT_URL:http://localhost:19065}
+    admin-token: ${ROCKETCHAT_ADMIN_TOKEN:}
   stalwart:
     base-url: ${STALWART_URL:http://localhost:19480}
     admin-user: ${STALWART_ADMIN_USER:admin}
