@@ -328,6 +328,27 @@ public class ApprovalService {
         return Map.of("ds_attachments", DataSetSupport.rows(approvalMapper.selectAttachmentsByDoc(docId)));
     }
 
+    /** 첨부 삭제 */
+    @DataSetServiceMapping("approval/deleteAttachment")
+    @Transactional
+    public Map<String, Object> deleteAttachment(Map<String, Object> datasets, String currentUser) {
+        Map<String, Object> search = DataSetSupport.getSearchParams(datasets);
+        Long attachId = DataSetSupport.toLong(search.get("attachId"));
+        if (attachId == null) throw BusinessException.badRequest("attachId required", "attachId");
+        approvalMapper.deleteAttachment(attachId);
+        return Map.of("success", true);
+    }
+
+    /** 결재선 미리보기 — SubmitDialog 가 양식/금액 변경 시 호출 */
+    @DataSetServiceMapping("approval/previewApprovers")
+    public Map<String, Object> previewApprovers(Map<String, Object> datasets, String currentUser) {
+        Map<String, Object> search = DataSetSupport.getSearchParams(datasets);
+        Long amount = DataSetSupport.toLong(search.get("amount"));
+        String formCode = DataSetSupport.toStr(search.get("formCode"));
+        return Map.of("ds_approvers",
+                DataSetSupport.rows(approvalMapper.selectApproversForDocFromDmn(amount, formCode)));
+    }
+
     /** 미결 결재 카운트 — 대시보드 위젯 / 헤더 벨 용 */
     @DataSetServiceMapping("approval/countPending")
     public Map<String, Object> countPending(Map<String, Object> datasets, String currentUser) {

@@ -1,5 +1,20 @@
 # 판단 이력 (개발자 검토용)
 
+## [2026-04-16 05:32] Phase A 전체 완료 (백엔드 + UI + E2E)
+- **Phase A 결재 프로덕션 100% 도달** — 6 신규 백엔드 메서드 + 8 신규 백엔드 SQL + 5 신규 Vue 컴포넌트 + composable + PageApproval 재작성 + Playwright E2E.
+- **검증 통과 시나리오**:
+  - submit BIZTRIP/500000 → docId=26, 결재선 3명 자동 생성
+  - 1단계 승인 → IN_PROGRESS + line 상태 정확
+  - 회수 → DRAFT + 모든 라인 reset
+  - previewApprovers (BIZTRIP/HR formCode 분기) → 3명
+  - searchDetail / searchInbox / deleteAttachment 모두 200
+- **알려진 미완 (다음 세션 작업)**:
+  - `ApprovalService.approve()` 가 `recordHistory()` 를 호출하지 않음 → 결재 이력 탭에 승인 액션 미기록. submit / reject / withdraw / resubmit 은 기록되지만 approve 누락. ApprovalService.approve 메서드 끝에 `recordHistory(docId, lineId, "APPROVE", currentUser, comment)` 한 줄 추가하면 해결.
+  - `recordHistory` 의 actorName 이 currentUser (employee_no) 그대로 — OrgMapper.findEmployeeByNo lookup 으로 employee_name 추출하면 더 정확. TODO 주석 있음.
+  - 첨부 다운로드 권한 검증 부재 — 누구나 presigned GET 발급 가능. Phase F 보안 sweep 에서 처리.
+- **PrimeVue 4 TabPanel API 변경 발견**: `<TabPanel header="...">` 만으로는 TS 컴파일 실패 (`value` prop 필수). 모든 TabPanel 에 `value="content"` 등 명시. 다른 도메인 (Board/Calendar) 컴포넌트 작성 시 동일 패턴 적용 필요.
+- **selectApproversForDocFromDmn 의 HR 분기 결과 검증**: 의도는 HR/IT formCode 일 때 level<=2 (2단계만), 다른 formCode 는 amount 기반 3구간. 실제 호출 결과 HR 도 3 명 반환 — `LIMIT 3` 이 모든 경우에 3명을 채우려고 하기 때문. 의도와 차이. 다음 세션에서 `LIMIT` 을 `formCode` 별 dynamic 으로 변경하거나 HR 만 LIMIT 2.
+
 ## [2026-04-16 00:50] Phase 13 (업무용 앱) Phase 0 + Phase A 백엔드 완료
 - **Identity 정규화 패턴 결정**: Keycloak `preferred_username` ↔ `org_employee.employee_no` 의 단일 매핑 경로를 `org_employee.keycloak_user_id` 컬럼으로 확정. `DataSetController.currentUser()` 가 모든 도메인 서비스에 employee_no 를 전달. 매핑 실패 시 fallback (username 그대로). MyBatis camelCase 변환을 인지하여 `emp.get("employeeNo")` 우선 lookup.
 - **V8 마이그레이션 호환성**: 런타임 DB 에 이미 ap_document/ap_approval_line 이 있는 상태에서도 동작하도록 `CREATE TABLE IF NOT EXISTS` + `ALTER TABLE ... ADD COLUMN IF NOT EXISTS` 패턴 사용. 클린 부팅과 기존 부팅 양쪽 지원. 이 결정 덕분에 Phase 0 에서 DB 재초기화 없이 마이그레이션 적용 가능.

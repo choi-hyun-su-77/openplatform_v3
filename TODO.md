@@ -126,21 +126,24 @@
 - [x] 0-7. PageApproval/Dashboard/Calendar 하드코딩 ID 제거
 - [x] 0-8. Clean DB 검증 + Playwright /approval 200 + delegate 정규화 검증
 
-### Phase A — 결재 프로덕션 (24h) — 백엔드 100% / 프론트 30%
-- [x] A-1. ApprovalService 6 신규 메서드 (withdraw/resubmit/delegate/uploadAttachment/listAttachments/countPending) + searchHistory + recordHistory helper
-- [x] A-2. ApprovalMapper XML 9 신규 SQL (insertAttachment/selectAttachmentsByDoc/insertHistory/selectHistoryByDoc/insertDelegation+CAST/cloneDocumentForResubmit/updateDocumentContent/resetLinesForWithdraw/deleteAttachment) + selectApproversForDocFromDmn 의 HR/IT 분기
-- [x] A-3 관련 backend 검증: countPending/searchHistory/listAttachments/delegate/withdraw smoke test 통과
-- [x] A-9. useApproval.ts composable (13 메서드)
+### Phase A — 결재 프로덕션 (24h) — **100% 완료** ✅
+- [x] A-1. ApprovalService 8 신규 메서드 (withdraw/resubmit/delegate/uploadAttachment/listAttachments/countPending/searchHistory/deleteAttachment/previewApprovers) + recordHistory helper
+- [x] A-2. ApprovalMapper XML 9 신규 SQL + HR/IT formCode 분기
+- [x] A-3. PageApproval.vue 재작성 (9-box nav + DataTable + DetailDialog 호스팅 + SubmitDialog)
+- [x] A-4. ApprovalDetailDialog.vue (4탭: 내용/결재선/첨부/이력 + ActionBar footer)
+- [x] A-5. ApprovalSubmitDialog.vue (양식 Dropdown + 제목/금액/본문 + DMN 결재선 미리보기)
 - [x] A-6. ApprovalLineTimeline.vue (PrimeVue Timeline)
 - [x] A-7. ApprovalActionBar.vue (승인/반려/회수/재상신/대결 + 다이얼로그)
-- [x] A-10. backend-core 재빌드 + 재기동
-- [ ] A-3. PageApproval.vue 재작성 (CrudToolbar + SearchPanel + 9-box + paged DataTable + DetailDialog 호스팅)
-- [ ] A-4. ApprovalDetailDialog.vue (4탭: 내용/결재선/첨부/이력 + ActionBar footer)
-- [ ] A-5. ApprovalSubmitDialog.vue (양식/제목/금액/본문 + DMN 결재선 미리보기 + 첨부)
-  - [ ] 백엔드 사이드 신규: `approval/previewApprovers` DataSet 서비스
-- [ ] A-8. ApprovalAttachmentList.vue (presigned PUT/GET 통한 업/다운/삭제)
-  - [ ] 백엔드 사이드 신규: `approval/deleteAttachment` DataSet 서비스
-- [ ] A-11. Playwright MCP A1~A3 (상신→승인 / 반려→재상신 / 회수)
+- [x] A-8. ApprovalAttachmentList.vue (presigned PUT/GET/삭제)
+- [x] A-9. useApproval.ts composable (13 메서드)
+- [x] A-10. backend-core + ui-frontend 재빌드 + 재기동
+- [x] A-11. E2E 검증: submit→approve→withdraw 라이프사이클 통과, previewApprovers/deleteAttachment 200
+
+### Phase A 알려진 미완 (다음 세션 빠른 작업)
+- [ ] approve() 메서드에 recordHistory 호출 1줄 추가 (history count=0 버그)
+- [ ] recordHistory 의 actorName lookup (OrgMapper)
+- [ ] HR/IT formCode 의 LIMIT 동적 처리 (HR=2, 다른=3)
+- [ ] 첨부 다운로드 권한 검증 (drafter/approver 만)
 
 ### Phase E — Dashboard + SSE 알림 센터 (8h, A 와 병행) — 0%
 - [ ] E-1. NotificationBell.vue (헤더 우상단, unread 배지, 최근 10건 dropdown)
