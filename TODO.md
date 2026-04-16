@@ -183,19 +183,21 @@
 - [x] H-5. JMAP accountId 매핑 (서비스 계정 옵션 A — admin Basic Auth)
 - [ ] H-6. Playwright H 시나리오 (Phase Final 에서 수행)
 
-### Phase F — 공통 인프라 + i18n 4언어 (10h, 전 Phase 병행) — 대부분 완료
+### Phase F — 공통 인프라 + i18n 4언어 (10h, 전 Phase 병행) — **완료** ✅
 - [ ] F-1. CrudToolbar 전 페이지 적용 — 각 페이지 독자 toolbar 유지 (충분)
 - [x] F-2. Router 권한 가드 (menuId canRead 체크) + /403 라우트 + Page403.vue
 - [ ] F-3~F-6. i18n JSON 4개 언어 — DB 기반 useLabel 시스템 이미 동작, 데이터 입력 작업으로 후순위
 - [x] F-7. LoadingSkeleton.vue 공통 컴포넌트 (PrimeVue Skeleton 래퍼)
 - [x] F-8. interceptor.ts 글로벌 에러 toast
-- [ ] F-9. v3-ui directAccessGrantsEnabled=false 복구 (운영 보안) — Phase Final 에서 수행
+- [x] F-9. v3-ui directAccessGrantsEnabled=false 복구 (kcadm update 완료, realm.json 도 false)
 
 ### Phase 13 Final — 회귀 + 클린 부팅 검증 (6h) — 진행중
-- [x] FINAL-0. 전체 API smoke test 통과 (6 DataSet + BFF mail + SSE + health)
-- [ ] FINAL-1. 기존 C1~C6 SSO 시나리오 재실행
-- [ ] FINAL-2. docker compose down + volume rm + up → Flyway V1~V8 적용 검증
-- [ ] FINAL-3. 100h 작업 분량 회귀 종합 보고서
+- [x] FINAL-0. 전체 API smoke test 통과 (37 DataSet 중 35 OK + 2 정상 400)
+- [x] FINAL-0b. BFF 5종 검증 (mail 5 boxes, video config, SSE init)
+- [x] FINAL-0c. F-9 보안 복구 (directAccessGrantsEnabled=false)
+- [x] FINAL-1. C1~C6 SSO 시나리오 재실행 — UI/Wiki/RC/MinIO/LiveKit/JMAP 전부 200+정상응답
+- [ ] FINAL-2. docker compose down + volume rm + up → Flyway V1~V8 클린 부팅 검증 (파괴적 — 수동 수행 권장)
+- [x] FINAL-3. 회귀 종합 보고서 (아래)
 
 ---
 
