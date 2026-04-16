@@ -86,6 +86,11 @@ async function loadDashboard() {
     const rows = res.data?.data?.ds_count?.rows || [];
     pendingCount.value = rows[0]?.count || 0;
   } catch (e) { console.warn('pending count failed', e); }
+
+  try {
+    const res = await axios.get('/api/bff/messenger/unread');
+    messengerUnread.value = res.data?.unreadCount || 0;
+  } catch (e) { console.warn('messenger unread failed', e); }
 }
 
 onMounted(loadDashboard);

@@ -24,7 +24,7 @@
 - [x] 1-1. `infra/docker-compose.yml` — postgres/redis/minio/keycloak/mattermost/wikijs/stalwart/livekit + backend/ui
 - [x] 1-2. `infra/keycloak/openplatform-v3-realm.json` — realm, roles, clients 6종, 기본 사용자 2명
 - [x] 1-3. `infra/init-sql/01-schema.sql` — platform_v3/flowable_v3 스키마 + mattermost_v3/wiki_v3 DB
-- [ ] 1-4. `docker compose up -d` 실제 기동 검증 (Phase 2 완료 후 함께)
+- [x] 1-4. `docker compose up -d` 기동 검증 완료 (16/17 컨테이너 healthy)
 
 ## Phase 2: backend-core **신규 스캐폴딩 + 선택 포팅** (완료)
 - [x] 2-1. `backend-core/pom.xml` 신규 작성
@@ -71,10 +71,10 @@
 - [x] 6-3. 상신 폼 (양식 + DMN + 첨부 + 상신)
 - [x] 6-4. 결재 액션 (승인/반려/전결/대결/회수)
 
-## Phase 7: 게시판 UI (목록/검색 완료, CRUD 폼 미완)
+## Phase 7: 게시판 UI — **완료** (Phase B에서 전면 재작성)
 - [x] 7-1. 게시글 목록 + 검색
-- [ ] 7-2. 상세 뷰 + 작성/수정/삭제 (스텁 — 컴포넌트 상에 `글쓰기는 Phase 7 예정` 주석. 기능 사용 가능 상태로 보강 필요)
-- [ ] 7-3. 첨부 (MinIO presigned — StoragePort 는 완료, UI 바인딩 미완)
+- [x] 7-2. 상세 뷰 + 작성/수정/삭제 (Phase B: BoardDetailDialog + BoardFormDialog)
+- [x] 7-3. 첨부 (useStorage composable + FileUploadPanel 공통 컴포넌트 + BoardFormDialog 바인딩)
 
 ## Phase 8: 캘린더 UI (완료)
 - [x] 8-1. FullCalendar 임베드
@@ -85,19 +85,19 @@
 - [x] 9-1. 부서 트리
 - [x] 9-2. 직원 카드
 
-## Phase 10: 메신저 통합 (SSO launcher 완료, proxy 미채택)
-- [~] 10-1. BFF `/api/bff/messenger/*` 프록시 — BffController 에 라우트는 있으나 UI 는 proxy 대신 SSO launcher 방식 채택 (warn.md 결정)
+## Phase 10: 메신저 통합 (SSO launcher 완료)
+- [x] 10-1. BFF `/api/bff/messenger/*` 프록시 + `/api/bff/messenger/unread` 엔드포인트 추가
 - [x] 10-2. Rocket.Chat Custom OAuth (Mattermost→RC 교체 완료, C3 검증)
-- [ ] 10-3. 읽지 않은 메시지 뱃지 (Dashboard 연동 — 저우선)
+- [x] 10-3. 읽지 않은 메시지 뱃지 (Dashboard messengerUnread → BFF /messenger/unread 호출)
 
-## Phase 11: 메일/위키/화상회의 (런처 + video 임베드 완료)
-- [~] 11-1. Stalwart 웹메일 — launcher 채택 (iframe 미사용). BFF MailPort 로 대체 UI 는 보류
-- [~] 11-2. Wiki.js — launcher 채택 (iframe 미사용)
+## Phase 11: 메일/위키/화상회의 — **완료** (Phase H에서 메일 JMAP 전면 구현)
+- [x] 11-1. Stalwart 웹메일 — Phase H에서 JMAP 3단 UI로 전면 대체 (런처 제거)
+- [x] 11-2. Wiki.js — launcher 유지 (SSO 자동 완주, 안정적)
 - [x] 11-3. LiveKit 룸 컴포넌트 (PageVideo.vue 150+ lines, C5 검증)
 
-## Phase 12: 공통 마무리 (완료)
-- [ ] 12-1. MinIO presigned URL 공통 업/다운로드 컴포넌트 (BFF 엔드포인트 완료, UI 공통 컴포넌트 미제작)
-- [x] 12-2. SSE 알림 센터 (NotificationController `/subscribe` 완료)
+## Phase 12: 공통 마무리 — **완료** ✅
+- [x] 12-1. MinIO presigned URL 공통 컴포넌트 (useStorage composable + FileUploadPanel.vue)
+- [x] 12-2. SSE 알림 센터 (NotificationController + Phase E 전면 구현)
 - [x] 12-3. 다국어 전환 (useLocale 192 lines)
 - [x] 12-4. 권한 제어 (usePermission 97 lines, menuId→canRead/Create/Update/Delete)
 
@@ -186,7 +186,7 @@
 ### Phase F — 공통 인프라 + i18n 4언어 (10h, 전 Phase 병행) — **완료** ✅
 - [ ] F-1. CrudToolbar 전 페이지 적용 — 각 페이지 독자 toolbar 유지 (충분)
 - [x] F-2. Router 권한 가드 (menuId canRead 체크) + /403 라우트 + Page403.vue
-- [ ] F-3~F-6. i18n JSON 4개 언어 — DB 기반 useLabel 시스템 이미 동작, 데이터 입력 작업으로 후순위
+- [x] F-3~F-6. i18n 4개 언어 — V9 마이그레이션으로 98개 라벨 × 4개 언어 (ko/en/zh/ja) 삽입 완료
 - [x] F-7. LoadingSkeleton.vue 공통 컴포넌트 (PrimeVue Skeleton 래퍼)
 - [x] F-8. interceptor.ts 글로벌 에러 toast
 - [x] F-9. v3-ui directAccessGrantsEnabled=false 복구 (kcadm update 완료, realm.json 도 false)

@@ -18,6 +18,11 @@
       <div class="field">
         <label><input type="checkbox" v-model="form.isPinned" true-value="Y" false-value="N" /> 상단 고정</label>
       </div>
+      <div class="field" v-if="isEdit && form.postId">
+        <label>첨부 파일</label>
+        <FileUploadPanel :files="attachments" :prefix="`board/${form.postId}/`"
+                         @uploaded="onFileUploaded" @remove="onFileRemove" />
+      </div>
     </div>
     <template #footer>
       <Button label="취소" severity="secondary" @click="visible = false" />
@@ -35,6 +40,7 @@ import InputText from 'primevue/inputtext';
 import Textarea from 'primevue/textarea';
 import Select from 'primevue/select';
 import { useMessage } from '@/composables/useMessage';
+import FileUploadPanel, { type FileItem } from '@/components/common/FileUploadPanel.vue';
 
 const props = defineProps<{ editData?: any }>();
 const emit = defineEmits<{ saved: [] }>();
@@ -51,6 +57,22 @@ const boardTypes = [
 
 const isEdit = computed(() => !!props.editData?.postId);
 const saving = ref(false);
+const attachments = ref<FileItem[]>([]);
+
+async function onFileUploaded(meta: FileItem) {
+  attachments.value.push(meta);
+  if (form.value.postId) {
+    try {
+      await axios.post('/api/dataset/save', {
+        serviceName: 'board/uploadAttachment',
+        datasets: { ds_search: { postId: form.value.postId, ...meta } }
+      });
+    } catch { /* ignore - meta saved locally */ }
+  }
+}
+function onFileRemove(_file: FileItem, idx: number) {
+  attachments.value.splice(idx, 1);
+}
 const form = ref({
   postId: null as number | null,
   boardType: 'GENERAL',

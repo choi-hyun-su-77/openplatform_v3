@@ -99,6 +99,12 @@ public class BffController {
         return username(auth);
     }
 
+    @GetMapping("/messenger/unread")
+    public Map<String, Object> messengerUnread(JwtAuthenticationToken auth) {
+        String count = messagingPort.unreadBadge(token(auth));
+        return Map.of("unreadCount", Integer.parseInt(count));
+    }
+
     @GetMapping("/wiki/search")
     public List<Map<String, Object>> wikiSearch(@RequestParam String keyword, JwtAuthenticationToken auth) {
         return wikiPort.searchPages(keyword, token(auth));
