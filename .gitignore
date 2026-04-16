@@ -26,10 +26,14 @@ reports/*.txt
 tmp/
 .claude/settings.local.json.bak
 
-# Vite / TypeScript
+# Vite / TypeScript build artifacts
 ui/dist/
 ui/node_modules/
 *.vue.ts
+*.vue.js
+*.vue.js.map
+ui/src/**/*.js
+ui/src/**/*.js.map
 
 # 상태 파일 (warn/fatal 은 남기기)
 info.md
