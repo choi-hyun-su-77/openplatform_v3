@@ -1,5 +1,18 @@
 # 판단 이력 (개발자 검토용)
 
+## [2026-04-16 22:40] Phase H 메일 JMAP 전면 구현 완료
+- **JMAP methodCalls 직렬화 이슈 2건 수정**: (1) Java `Object[]` 를 Jackson 이 JSON 배열이 아닌 객체로 직렬화 → `List.of()` 로 변경. (2) `methodResponses` 역직렬화가 `List<List<Object>>` 로 오는데 `List<Object[]>` 로 캐스팅 시도 → 제네릭 수정. 두 건 모두 Stalwart JMAP 400 응답으로 발견, 수정 후 5개 mailbox 정상 반환.
+- **JMAP 서비스 계정 방식 확정**: `admin:admin` Basic Auth 로 Stalwart JMAP 호출. `accountId` 는 Keycloak `preferred_username` 을 사용하되, Stalwart 가 해당 accountId 를 인식하려면 LDAP 동기화 필수. 현재 admin 계정만 정상 동작, user1/user2 는 LDAP 사용자가 Stalwart 에 프로비저닝된 후 사용 가능.
+- **UI 3단 레이아웃**: `grid-template-columns: 200px 360px 1fr` 로 메일함/리스트/상세 분리. ComposeDialog 는 답장/전달 시 제목 prefix (`Re:` / `Fwd:`) + preview 본문 자동 채움.
+
+## [2026-04-16 21:22] Phase A fix + E + B + C + D + F 부분 완료
+- **Phase A 미완 4건 모두 수정**: approve() recordHistory 추가, OrgMapper 주입 actorName lookup, HR/IT LIMIT 동적(2/3), 첨부 verifyDocAccess 권한 검증. 모두 API 검증 통과.
+- **Phase E SSE 인증 결정**: 브라우저 EventSource 가 커스텀 헤더 미지원 → `?token=` 쿼리 파라미터 방식 채택. `SseTokenFilter` (OncePerRequestFilter) 가 SSE 엔드포인트에서만 토큰을 Authorization 헤더로 변환. SecurityConfig 에서 `/api/notification/subscribe` 를 `authenticated()` 로 변경 (이전 `permitAll`). NotificationController 는 JWT `preferred_username` → `org_employee.employee_id` 자동 매핑.
+- **Phase B 게시판**: BoardService 에 댓글 CRUD 5개 + 첨부 1개 DataSet 서비스 추가. 댓글은 `bd_comment` 의 `parent_id` 기반 1단계 대댓글 지원. 삭제는 soft delete (`deleted=TRUE`). BoardFormDialog 는 `md-editor-v3` 대신 PrimeVue `Textarea` 채택 — 외부 패키지 의존성 최소화, 마크다운 렌더링은 BoardDetailDialog 에서 줄바꿈만 처리.
+- **Phase C 캘린더**: `calendar/deleteEvent` 독립 DataSet 서비스 추가 (기존 saveEvents _rowType="D" 와 별도). FullCalendar `dateClick` / `dateSelect` / `eventClick` / `eventDrop` / `eventResize` 전부 구현. 공휴일은 `cm_holiday` 에서 조회하여 분홍색 background 이벤트로 표시. 반복 일정(RRULE)은 미구현 — DB 에 recurrence 컬럼 없음, Phase F 또는 후속에서 필요 시 추가.
+- **Phase F 글로벌 에러 toast**: interceptor.ts 에서 4xx/5xx 에러 시 `CustomEvent('global-error-toast')` 발행, `LayoutDefault.vue` 에서 수신하여 `useMessage().error()` 호출. 403은 `/403` 라우트로 리다이렉트.
+- **서비스 수 변화**: 30 → 37 (Phase B +5, Phase C +2).
+
 ## [2026-04-16 05:32] Phase A 전체 완료 (백엔드 + UI + E2E)
 - **Phase A 결재 프로덕션 100% 도달** — 6 신규 백엔드 메서드 + 8 신규 백엔드 SQL + 5 신규 Vue 컴포넌트 + composable + PageApproval 재작성 + Playwright E2E.
 - **검증 통과 시나리오**:

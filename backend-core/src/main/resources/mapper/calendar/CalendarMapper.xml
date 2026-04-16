@@ -55,4 +55,11 @@
         SET deleted_at = NOW(), deleted_by = #{deletedBy}
         WHERE event_id = #{eventId}
     </update>
+    <!-- Phase C: 공휴일 -->
+    <select id="selectHolidays" resultType="map">
+        SELECT holiday_id, holiday_date, holiday_name, holiday_type
+        FROM platform_v3.cm_holiday
+        WHERE EXTRACT(YEAR FROM holiday_date) = #{year}
+        ORDER BY holiday_date
+    </select>
 </mapper>

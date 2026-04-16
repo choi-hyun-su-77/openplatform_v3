@@ -13,6 +13,7 @@ import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
@@ -45,11 +46,12 @@ public class SecurityConfig {
                                 "/actuator/metrics",
                                 "/api/public/**",
                                 "/api/codes/**",
-                                "/api/i18n/**",
-                                "/api/notification/subscribe"
+                                "/api/i18n/**"
                         ).permitAll()
+                        .requestMatchers("/api/notification/subscribe").authenticated()
                         .anyRequest().authenticated()
                 )
+                .addFilterBefore(new SseTokenFilter(), UsernamePasswordAuthenticationFilter.class)
                 .oauth2ResourceServer(oauth2 -> oauth2
                         .jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter()))
                 );

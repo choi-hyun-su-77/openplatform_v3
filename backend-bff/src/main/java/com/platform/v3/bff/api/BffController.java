@@ -60,17 +60,43 @@ public class BffController {
         return messagingPort.postMessage((String) body.get("channelId"), (String) body.get("text"), token(auth));
     }
 
-    @GetMapping("/mail/mailbox")
-    public List<Map<String, Object>> mailbox(@RequestParam(defaultValue = "INBOX") String folder,
-                                             @RequestParam(defaultValue = "50") int limit,
-                                             JwtAuthenticationToken auth) {
-        return mailPort.listMailbox(token(auth), folder, limit);
+    @GetMapping("/mail/session")
+    public Map<String, Object> mailSession(JwtAuthenticationToken auth) {
+        return mailPort.getSession(mailAccountId(auth));
+    }
+
+    @GetMapping("/mail/mailboxes")
+    public List<Map<String, Object>> mailboxes(JwtAuthenticationToken auth) {
+        return mailPort.listMailboxes(mailAccountId(auth));
+    }
+
+    @GetMapping("/mail/emails")
+    public List<Map<String, Object>> emails(@RequestParam(required = false) String mailboxId,
+                                            @RequestParam(defaultValue = "50") int limit,
+                                            @RequestParam(defaultValue = "0") int offset,
+                                            JwtAuthenticationToken auth) {
+        return mailPort.listEmails(mailAccountId(auth), mailboxId, limit, offset);
+    }
+
+    @GetMapping("/mail/email/{emailId}")
+    public Map<String, Object> emailDetail(@PathVariable String emailId, JwtAuthenticationToken auth) {
+        mailPort.markRead(mailAccountId(auth), emailId);
+        return mailPort.getEmail(mailAccountId(auth), emailId);
     }
 
     @PostMapping("/mail/send")
-    public Map<String, Object> sendMail(@RequestBody Map<String, Object> body,
-                                        JwtAuthenticationToken auth) {
-        return mailPort.sendMail(body, token(auth));
+    public Map<String, Object> sendMail(@RequestBody Map<String, Object> body, JwtAuthenticationToken auth) {
+        return mailPort.sendEmail(mailAccountId(auth), body);
+    }
+
+    @PostMapping("/mail/draft")
+    public Map<String, Object> saveDraft(@RequestBody Map<String, Object> body, JwtAuthenticationToken auth) {
+        return mailPort.saveDraft(mailAccountId(auth), body);
+    }
+
+    /** Keycloak username → Stalwart accountId 매핑 (서비스 계정 방식) */
+    private String mailAccountId(JwtAuthenticationToken auth) {
+        return username(auth);
     }
 
     @GetMapping("/wiki/search")

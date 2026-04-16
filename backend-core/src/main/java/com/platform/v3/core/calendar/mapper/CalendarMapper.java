@@ -20,4 +20,7 @@ public interface CalendarMapper {
     void insertEvent(Map<String, Object> row);
     void updateEvent(Map<String, Object> row);
     void deleteEvent(@Param("eventId") Long eventId, @Param("deletedBy") String deletedBy);
+
+    // Phase C
+    List<Map<String, Object>> selectHolidays(@Param("year") int year);
 }

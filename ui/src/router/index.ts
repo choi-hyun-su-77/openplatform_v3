@@ -9,6 +9,12 @@ const routes: RouteRecordRaw[] = [
     meta: { requiresAuth: false }
   },
   {
+    path: '/403',
+    name: 'forbidden',
+    component: () => import('@/pages/Page403.vue'),
+    meta: { requiresAuth: false }
+  },
+  {
     path: '/',
     component: () => import('@/components/layout/LayoutDefault.vue'),
     meta: { requiresAuth: true },
@@ -44,6 +50,14 @@ router.beforeEach(async (to) => {
   }
   if (!auth.user) {
     await auth.loadUserInfo();
+  }
+  // 권한 가드: 메뉴 권한이 있는 경우 canRead 체크
+  const menuId = to.meta.menuId as string | undefined;
+  if (menuId && auth.menus.length > 0) {
+    const menu = auth.menus.find(m => m.menuId === menuId || m.menuPath === to.path);
+    if (menu && menu.canRead === false) {
+      return '/403';
+    }
   }
   return true;
 });

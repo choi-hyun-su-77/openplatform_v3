@@ -55,4 +55,53 @@
         SET deleted_at = NOW(), deleted_by = #{deletedBy}
         WHERE post_id = #{postId}
     </update>
+
+    <!-- Phase B: 댓글 -->
+    <select id="selectComments" resultType="map">
+        SELECT comment_id, post_id, parent_id, content, author_no, author_name,
+               created_at, updated_at, deleted
+        FROM platform_v3.bd_comment
+        WHERE post_id = #{postId} AND deleted = FALSE
+        ORDER BY COALESCE(parent_id, comment_id), parent_id NULLS FIRST, created_at
+    </select>
+
+    <insert id="insertComment" parameterType="map" useGeneratedKeys="true"
+            keyProperty="commentId" keyColumn="comment_id">
+        INSERT INTO platform_v3.bd_comment
+            (post_id, parent_id, content, author_no, author_name, created_at, updated_at)
+        VALUES
+            (#{postId}, #{parentId}, #{content}, #{authorNo}, #{authorName}, NOW(), NOW())
+    </insert>
+
+    <update id="softDeleteComment">
+        UPDATE platform_v3.bd_comment
+        SET deleted = TRUE, updated_at = NOW()
+        WHERE comment_id = #{commentId}
+    </update>
+
+    <select id="countComments" resultType="int">
+        SELECT COUNT(*) FROM platform_v3.bd_comment
+        WHERE post_id = #{postId} AND deleted = FALSE
+    </select>
+
+    <!-- Phase B: 첨부 -->
+    <select id="selectAttachments" resultType="map">
+        SELECT attach_id, post_id, object_key, filename, size_bytes, mime_type,
+               uploader_no, uploaded_at
+        FROM platform_v3.bd_attachment
+        WHERE post_id = #{postId}
+        ORDER BY uploaded_at
+    </select>
+
+    <insert id="insertAttachment" parameterType="map" useGeneratedKeys="true"
+            keyProperty="attachId" keyColumn="attach_id">
+        INSERT INTO platform_v3.bd_attachment
+            (post_id, object_key, filename, size_bytes, mime_type, uploader_no)
+        VALUES
+            (#{postId}, #{objectKey}, #{filename}, #{sizeBytes}, #{mimeType}, #{uploaderNo})
+    </insert>
+
+    <delete id="deleteAttachment">
+        DELETE FROM platform_v3.bd_attachment WHERE attach_id = #{attachId}
+    </delete>
 </mapper>

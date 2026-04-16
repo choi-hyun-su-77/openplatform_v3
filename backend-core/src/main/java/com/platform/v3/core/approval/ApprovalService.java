@@ -5,6 +5,7 @@ import com.platform.v3.core.common.BusinessException;
 import com.platform.v3.core.common.DataSetSupport;
 import com.platform.v3.core.dataset.DataSetServiceMapping;
 import com.platform.v3.core.notification.NotificationService;
+import com.platform.v3.core.org.mapper.OrgMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -25,10 +26,12 @@ public class ApprovalService {
 
     private final ApprovalMapper approvalMapper;
     private final NotificationService notificationService;
+    private final OrgMapper orgMapper;
 
-    public ApprovalService(ApprovalMapper approvalMapper, NotificationService notificationService) {
+    public ApprovalService(ApprovalMapper approvalMapper, NotificationService notificationService, OrgMapper orgMapper) {
         this.approvalMapper = approvalMapper;
         this.notificationService = notificationService;
+        this.orgMapper = orgMapper;
     }
 
     @DataSetServiceMapping("approval/searchInbox")
@@ -145,6 +148,7 @@ public class ApprovalService {
                         );
                     });
         }
+        recordHistory(docId, lineId, "APPROVE", currentUser, comment);
         return Map.of("success", true, "allApproved", allApproved);
     }
 
@@ -319,22 +323,30 @@ public class ApprovalService {
         return Map.of("success", true, "attachId", row.get("attachId"));
     }
 
-    /** 첨부 목록 — 상세 다이얼로그 "첨부" 탭에서 호출 */
+    /** 첨부 목록 — 상세 다이얼로그 "첨부" 탭에서 호출. drafter/approver 만 접근 가능. */
     @DataSetServiceMapping("approval/listAttachments")
     public Map<String, Object> listAttachments(Map<String, Object> datasets, String currentUser) {
         Map<String, Object> search = DataSetSupport.getSearchParams(datasets);
         Long docId = DataSetSupport.toLong(search.get("docId"));
         if (docId == null) throw BusinessException.badRequest("docId required", "docId");
+        verifyDocAccess(docId, currentUser);
         return Map.of("ds_attachments", DataSetSupport.rows(approvalMapper.selectAttachmentsByDoc(docId)));
     }
 
-    /** 첨부 삭제 */
+    /** 첨부 삭제 — 기안자만 삭제 가능 */
     @DataSetServiceMapping("approval/deleteAttachment")
     @Transactional
     public Map<String, Object> deleteAttachment(Map<String, Object> datasets, String currentUser) {
         Map<String, Object> search = DataSetSupport.getSearchParams(datasets);
         Long attachId = DataSetSupport.toLong(search.get("attachId"));
+        Long docId = DataSetSupport.toLong(search.get("docId"));
         if (attachId == null) throw BusinessException.badRequest("attachId required", "attachId");
+        if (docId != null) {
+            Map<String, Object> doc = approvalMapper.selectDetail(docId);
+            if (doc != null && !String.valueOf(doc.get("drafterNo")).equals(currentUser)) {
+                throw BusinessException.forbidden("기안자만 첨부를 삭제할 수 있습니다");
+            }
+        }
         approvalMapper.deleteAttachment(attachId);
         return Map.of("success", true);
     }
@@ -369,19 +381,36 @@ public class ApprovalService {
     // Helpers
     // ============================================================
 
+    /** 문서 접근 권한 검증 — 기안자 또는 결재선에 포함된 사용자만 허용 */
+    private void verifyDocAccess(Long docId, String currentUser) {
+        Map<String, Object> doc = approvalMapper.selectDetail(docId);
+        if (doc == null) throw BusinessException.notFound("문서를 찾을 수 없습니다: " + docId);
+        if (String.valueOf(doc.get("drafterNo")).equals(currentUser)) return;
+        List<Map<String, Object>> lines = approvalMapper.selectApprovalLine(docId);
+        boolean isApprover = lines.stream()
+                .anyMatch(l -> String.valueOf(l.get("approverNo")).equals(currentUser));
+        if (!isApprover) {
+            throw BusinessException.forbidden("이 문서에 대한 접근 권한이 없습니다");
+        }
+    }
+
     private void recordHistory(Long docId, Long lineId, String action, String actorNo, String comment) {
         try {
-            Map<String, Object> emp = null;
+            String actorName = actorNo;
             try {
-                // ApprovalMapper 에는 employee 조회가 없으므로 actorName 은 currentUser 그대로
-                // OrgMapper 를 별도로 주입하지 않고 단순 문자열 처리
-            } catch (Exception ignore) {}
+                Map<String, Object> emp = orgMapper.findEmployeeByNo(actorNo);
+                if (emp != null && emp.get("employeeName") != null) {
+                    actorName = String.valueOf(emp.get("employeeName"));
+                }
+            } catch (Exception ignore) {
+                log.debug("actorName lookup 실패 actorNo={}: {}", actorNo, ignore.getMessage());
+            }
             Map<String, Object> row = new HashMap<>();
             row.put("docId", docId);
             row.put("lineId", lineId);
             row.put("action", action);
             row.put("actorNo", actorNo);
-            row.put("actorName", actorNo);  // TODO: name lookup if available
+            row.put("actorName", actorName);
             row.put("comment", comment);
             approvalMapper.insertHistory(row);
         } catch (Exception e) {

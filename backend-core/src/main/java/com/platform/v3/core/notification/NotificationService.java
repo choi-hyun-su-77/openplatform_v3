@@ -99,6 +99,14 @@ public class NotificationService {
         return Map.of("success", true);
     }
 
+    @DataSetServiceMapping("notification/getBadgeCount")
+    public Map<String, Object> getBadgeCount(Map<String, Object> datasets, String currentUser) {
+        Map<String, Object> search = DataSetSupport.getSearchParams(datasets);
+        Long recipientId = DataSetSupport.toLong(search.get("recipientId"));
+        int count = recipientId != null ? notificationMapper.countUnread(recipientId) : 0;
+        return Map.of("ds_badge", DataSetSupport.rows(List.of(Map.of("count", count))));
+    }
+
     public void notify(Long docId, Long recipientId, String type, String channel) {
         notify(docId, recipientId, type, channel, null, null);
     }

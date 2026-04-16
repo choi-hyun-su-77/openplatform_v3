@@ -21,4 +21,19 @@ public interface BoardMapper {
     void updatePost(Map<String, Object> row);
 
     void deletePost(@Param("postId") Long postId, @Param("deletedBy") String deletedBy);
+
+    // Phase B 확장
+    List<Map<String, Object>> selectComments(@Param("postId") Long postId);
+
+    void insertComment(Map<String, Object> row);
+
+    void softDeleteComment(@Param("commentId") Long commentId);
+
+    List<Map<String, Object>> selectAttachments(@Param("postId") Long postId);
+
+    void insertAttachment(Map<String, Object> row);
+
+    void deleteAttachment(@Param("attachId") Long attachId);
+
+    int countComments(@Param("postId") Long postId);
 }

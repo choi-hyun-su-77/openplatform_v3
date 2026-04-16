@@ -139,7 +139,10 @@
                   <otherwise>3</otherwise>
               </choose>
         ORDER BY p.position_level
-        LIMIT 3
+        LIMIT <choose>
+            <when test="formCode != null and (formCode == 'HR' or formCode == 'IT')">2</when>
+            <otherwise>3</otherwise>
+        </choose>
     </select>
 
     <!-- ===== Phase A 신규 ===== -->

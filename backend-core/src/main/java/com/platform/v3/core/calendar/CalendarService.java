@@ -7,6 +7,7 @@ import com.platform.v3.core.dataset.DataSetServiceMapping;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Year;
 import java.util.List;
 import java.util.Map;
 
@@ -59,5 +60,22 @@ public class CalendarService {
             }
         }
         return Map.of("success", true);
+    }
+
+    @DataSetServiceMapping("calendar/deleteEvent")
+    @Transactional
+    public Map<String, Object> deleteEvent(Map<String, Object> datasets, String currentUser) {
+        Map<String, Object> search = DataSetSupport.getSearchParams(datasets);
+        Long eventId = DataSetSupport.toLong(search.get("eventId"));
+        if (eventId == null) throw BusinessException.badRequest("eventId required", "eventId");
+        calendarMapper.deleteEvent(eventId, currentUser);
+        return Map.of("success", true);
+    }
+
+    @DataSetServiceMapping("calendar/searchHolidays")
+    public Map<String, Object> searchHolidays(Map<String, Object> datasets, String currentUser) {
+        Map<String, Object> search = DataSetSupport.getSearchParams(datasets);
+        Integer year = search.get("year") != null ? ((Number) search.get("year")).intValue() : Year.now().getValue();
+        return Map.of("ds_holidays", DataSetSupport.rows(calendarMapper.selectHolidays(year)));
     }
 }

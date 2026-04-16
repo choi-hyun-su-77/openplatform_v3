@@ -65,6 +65,8 @@
         </Button>
         <Menu ref="localeMenuRef" :model="localeMenuItems" :popup="true" />
       </div>
+      <!-- 알림 벨 (SSE 실시간) -->
+      <NotificationBell />
       <!-- 로그인 사용자 정보 표시: 이름 (부서명) -->
       <span class="user-info" v-if="authStore.user">
         <i class="pi pi-user"></i>
@@ -95,6 +97,7 @@ import { t } from '@/composables/useLabel'
 import Button from 'primevue/button'
 import Menu from 'primevue/menu'
 import ThemeSettingsDrawer from './ThemeSettingsDrawer.vue'
+import NotificationBell from '@/components/common/NotificationBell.vue'
 
 /**
  * 부모(LayoutDefault)로 전달하는 이벤트

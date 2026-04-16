@@ -65,8 +65,15 @@ export function setupInterceptor(router: Router) {
       }
 
       if (error.response?.status === 403) {
-        console.warn('403 forbidden:', req?.url);
+        router.push('/403').catch(() => {});
         return Promise.reject(error);
+      }
+
+      // 4xx/5xx 글로벌 에러 toast (401/403 은 위에서 처리됨)
+      if (error.response && error.response.status >= 400) {
+        const data = error.response.data as any;
+        const msg = data?.message || data?.error?.code || `오류가 발생했습니다 (${error.response.status})`;
+        window.dispatchEvent(new CustomEvent('global-error-toast', { detail: { message: msg, status: error.response.status } }));
       }
 
       if (isRetryable(error) && req) {
