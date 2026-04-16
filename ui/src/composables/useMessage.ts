@@ -57,24 +57,26 @@ const loadingPromises = new Map<SupportedLocale, Promise<void>>()
  */
 async function loadMessages(locale?: SupportedLocale): Promise<void> {
   const loc = locale || getCurrentLocale()
-  if (messageCache.has(loc) && messageCache.get(loc)!.size > 0) return
+  if (messageCache.has(loc)) return
   if (loadingPromises.has(loc)) return loadingPromises.get(loc)
 
   const promise = (async () => {
     try {
-      const response = await axios.get('/api/messages', { params: { locale: loc } })
-      if (response.data.success) {
-        const map = new Map<string, MessageEntry>()
+      const response = await axios.get(`/api/i18n/${loc}`, { params: { type: 'MSG' } })
+      const map = new Map<string, MessageEntry>()
+      if (response.data.success && Array.isArray(response.data.data)) {
         for (const msg of response.data.data) {
-          map.set(msg.messageId, {
-            text: msg.messageText,
-            type: msg.messageType
+          map.set(msg.msgKey || msg.messageId, {
+            text: msg.message || msg.messageText || '',
+            type: msg.msgType || msg.messageType || 'MSG'
           })
         }
-        messageCache.set(loc, map)
       }
+      messageCache.set(loc, map)
     } catch (e) {
-      console.error('Failed to load messages:', e)
+      console.warn('Messages endpoint unavailable, using empty cache:', (e as any)?.message || e)
+      // 빈 캐시 설정 → 재시도 방지
+      messageCache.set(loc, new Map<string, MessageEntry>())
     } finally {
       loadingPromises.delete(loc)
     }

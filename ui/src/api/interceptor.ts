@@ -19,7 +19,7 @@ function delay(attempt: number): Promise<void> {
 
 function isRetryable(e: AxiosError): boolean {
   const url = (e.config?.url || '') as string;
-  if (url.includes('/auth/') || url.includes('/bff/identity/me')) return false;
+  if (url.includes('/auth/') || url.includes('/bff/identity/me') || url.includes('/api/messages') || url.includes('/api/i18n/') || url.includes('/api/codes/')) return false;
   if (!e.response) return true;
   return e.response.status >= 500;
 }
@@ -69,11 +69,16 @@ export function setupInterceptor(router: Router) {
         return Promise.reject(error);
       }
 
-      // 4xx/5xx 글로벌 에러 toast (401/403 은 위에서 처리됨)
+      // 4xx/5xx 글로벌 에러 toast (401/403 은 위에서 처리됨, 내부 캐시 요청 제외)
       if (error.response && error.response.status >= 400) {
-        const data = error.response.data as any;
-        const msg = data?.message || data?.error?.code || `오류가 발생했습니다 (${error.response.status})`;
-        window.dispatchEvent(new CustomEvent('global-error-toast', { detail: { message: msg, status: error.response.status } }));
+        const reqUrl = (req?.url || '') as string;
+        const silentPaths = ['/api/messages', '/api/i18n/', '/api/codes/', '/api/bff/identity/me'];
+        const isSilent = silentPaths.some(p => reqUrl.includes(p));
+        if (!isSilent) {
+          const data = error.response.data as any;
+          const msg = data?.message || data?.error?.code || `오류가 발생했습니다 (${error.response.status})`;
+          window.dispatchEvent(new CustomEvent('global-error-toast', { detail: { message: msg, status: error.response.status } }));
+        }
       }
 
       if (isRetryable(error) && req) {
