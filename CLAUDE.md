@@ -1,5 +1,34 @@
 # openplatform_v3 — 통합 그룹웨어 프로젝트 규칙
 
+## 포트 할당 규칙 (워크스페이스 공통 최상위 규칙)
+
+- 루트 `/C:/claude/docker-info.xml` 이 워크스페이스 전체 Docker 서비스·호스트 포트의 **단일 권위 레지스트리**.
+- 각 프로젝트는 **전용 천 단위 대역** 에 모든 서비스(DB, Redis, Backend, Frontend, 모니터링 등) 집합화.
+- 새 서비스·포트 **추가/변경/삭제 시 반드시**:
+  1. 루트 `docker-info.xml` 의 `<port-conflicts>` 섹션에서 충돌 확인
+  2. 자기 프로젝트 블록의 `<service>` 항목을 갱신
+  3. 루트 `port-change-report.md` 에 이력 기록
+- 호스트 포트는 IANA ephemeral 범위(49152–65535) 회피 — 1024–49151 대역 사용.
+- **본 프로젝트 대역**: `19xxx` (예: 24xxx, 25xxx).
+
+### 프로젝트별 대역 (전체)
+| 프로젝트 | 대역 |
+|---|---|
+| JeecgBoot | 13xxx |
+| iotops-parent | 14xxx |
+| mlops_poc | 15xxx |
+| openops | 16xxx |
+| openplatform (v1) | 17xxx |
+| openplatform_v2 | 18xxx |
+| openplatform_v3 | 19xxx |
+| ts-spring | 22xxx |
+| RuoYi | 23xxx |
+| react-spring-fw | 24xxx |
+| ts-spring-fw | 25xxx |
+| yt_rank_collector | 26xxx/27xxx |
+| Pig | 33xxx |
+| health_chk | 39xxx |
+
 상위 규칙은 `C:\claude\CLAUDE.md` 및 `C:\claude\CLAUDE_CODE_AUTONOMOUS_DEV_FRAMEWORK_V2.md` 에서 상속한다.
 
 ## 아키텍처
