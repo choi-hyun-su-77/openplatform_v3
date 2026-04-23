@@ -1,7 +1,7 @@
 /**
  * 인증 스토어 — Keycloak PKCE 기반 SSO 통합
  *
- * ts-spring-fw의 JWT 자체발급 구조를 Keycloak OIDC로 교체.
+ * vue-spring-fw의 JWT 자체발급 구조를 Keycloak OIDC로 교체.
  * - accessToken: Keycloak 발급 JWT (interceptor에서 Authorization 헤더에 첨부)
  * - user: Keycloak userinfo + v3 백엔드의 menus 병합
  * - menus: /api/bff/identity/me 또는 v3 core 로부터 로드

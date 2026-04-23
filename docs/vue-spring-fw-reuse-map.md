@@ -1,6 +1,6 @@
-# ts-spring-fw 재사용 추적표
+# vue-spring-fw 재사용 추적표
 
-**원본 위치**: `C:\claude\ts-spring-fw` — **절대 수정 금지**
+**원본 위치**: `C:\claude\vue-spring-fw` — **절대 수정 금지**
 **복사 대상**: `C:\claude\openplatform_v3\ui\src\**`
 
 > 원본은 읽기 전용 참조 자산이며, 필요한 파일을 Phase 4에서 정적 복사합니다.

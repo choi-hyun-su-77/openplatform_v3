@@ -40,11 +40,11 @@
 
 <h1>0. 세션 요약</h1>
 
-<p>사용자는 <code>openplatform</code>(v1), <code>openplatform_v2</code>, <code>ts-spring-fw</code> 세 프로젝트를 분석한 후 <strong>통합 그룹웨어 백엔드</strong>를 선택하여 <code>openplatform_v3</code>를 구축하고, 모든 외부 서비스를 <strong>Keycloak 으로 단일 SSO 통합</strong>하기를 요청함.</p>
+<p>사용자는 <code>openplatform</code>(v1), <code>openplatform_v2</code>, <code>vue-spring-fw</code> 세 프로젝트를 분석한 후 <strong>통합 그룹웨어 백엔드</strong>를 선택하여 <code>openplatform_v3</code>를 구축하고, 모든 외부 서비스를 <strong>Keycloak 으로 단일 SSO 통합</strong>하기를 요청함.</p>
 
 <table>
   <tr><th>항목</th><th>결과</th></tr>
-  <tr><td>아키텍처</td><td>옵션 C 하이브리드 — v1 DataSet 도메인 재사용 + v2 Port-Adapter BFF + ts-spring-fw UI 컴포넌트 복사</td></tr>
+  <tr><td>아키텍처</td><td>옵션 C 하이브리드 — v1 DataSet 도메인 재사용 + v2 Port-Adapter BFF + vue-spring-fw UI 컴포넌트 복사</td></tr>
   <tr><td>포트 대역</td><td>19xxx 주력 + 25174(UI dev), v1(17xxx)/v2(18xxx)와 격리</td></tr>
   <tr><td>생성 파일</td><td>120+ 파일 (Java/Vue/SQL/YAML/Docker)</td></tr>
   <tr><td>기동 컨테이너</td><td>13개 (postgres/redis/minio/keycloak/rocketchat/mongo/wikijs/stalwart/livekit/openldap/backend-core/backend-bff/ui-vite)</td></tr>
@@ -56,7 +56,7 @@
 <div class="rule">
 <ol>
   <li>완전 자율 실행 — 사용자 질문 금지, 모든 판단 자율, warn.md 기록</li>
-  <li><code>C:\claude\ts-spring-fw</code> 원본 <strong>절대 변경 금지</strong> — 읽기 전용 참조, 컴포넌트만 v3 하위로 정적 복사</li>
+  <li><code>C:\claude\vue-spring-fw</code> 원본 <strong>절대 변경 금지</strong> — 읽기 전용 참조, 컴포넌트만 v3 하위로 정적 복사</li>
   <li><code>C:\claude\openplatform</code>(v1) / <code>openplatform_v2</code>(v2) 는 <strong>통째 복사 금지</strong> — 분석 후 필요 요소만 선택 참고</li>
   <li>질문 금지, 모든 답은 YES 로 처리</li>
   <li>Keycloak 단일 허브로 통합 로그인 (realm <code>openplatform-v3</code>)</li>
@@ -87,7 +87,7 @@
 <ul>
   <li><strong>Core 도메인</strong>: v1 의 DataSet + MyBatis + Flowable 선택 포팅 → <code>backend-core</code></li>
   <li><strong>BFF 통합 계층</strong>: v2 의 Port-Adapter 로 외부 서비스 프록시 → <code>backend-bff</code></li>
-  <li><strong>UI</strong>: <code>ts-spring-fw</code> 의 Vue 3 + PrimeVue 4 컴포넌트 정적 복사 + Keycloak-js 어댑터</li>
+  <li><strong>UI</strong>: <code>vue-spring-fw</code> 의 Vue 3 + PrimeVue 4 컴포넌트 정적 복사 + Keycloak-js 어댑터</li>
   <li><strong>근거</strong>: UI 별도 제작 전제에서 v1 도메인 재활용 가치 최대. 외부 서비스는 Port 로 격리하면 장기 유연성 확보</li>
 </ul>
 
@@ -116,8 +116,8 @@
 <ul>
   <li><code>openplatform_v3/</code> 디렉토리 구조 (<code>backend-core</code>, <code>backend-bff</code>, <code>ui</code>, <code>infra</code>, <code>docs</code>, <code>.claude</code>)</li>
   <li>상태 파일 4종: <code>info.md</code>, <code>warn.md</code>, <code>fatal.md</code>, <code>TODO.md</code></li>
-  <li><code>CLAUDE.md</code> v3 전용 규칙, <code>.claude/settings.local.json</code> 권한 (ts-spring-fw/v1/v2 쓰기 차단)</li>
-  <li><code>docs/api-catalog.md</code>, <code>scenarios.md</code>(15 시나리오), <code>port-allocation.md</code>, <code>ts-spring-fw-reuse-map.md</code></li>
+  <li><code>CLAUDE.md</code> v3 전용 규칙, <code>.claude/settings.local.json</code> 권한 (vue-spring-fw/v1/v2 쓰기 차단)</li>
+  <li><code>docs/api-catalog.md</code>, <code>scenarios.md</code>(15 시나리오), <code>port-allocation.md</code>, <code>vue-spring-fw-reuse-map.md</code></li>
   <li>상위 <code>C:\claude\docker-info.xml</code> 에 v3 프로젝트 블록 추가, <code>port-change-report.md</code> 2026-04-14 이력</li>
 </ul>
 
@@ -151,7 +151,7 @@
 <h2>Phase 4 — UI Vite + Vue 3 + PrimeVue 4</h2>
 <ul>
   <li><code>package.json</code>, <code>vite.config.ts</code>(port 25174 + /api proxy)</li>
-  <li>ts-spring-fw 에서 <strong>정적 복사</strong>: composable 10종, layout/common 컴포넌트, <code>store/tab.ts</code></li>
+  <li>vue-spring-fw 에서 <strong>정적 복사</strong>: composable 10종, layout/common 컴포넌트, <code>store/tab.ts</code></li>
   <li>신규 작성: <code>keycloak.ts</code>(PKCE + silent-SSO), <code>store/auth.ts</code>(Keycloak 어댑트), <code>api/interceptor.ts</code>(401/5xx 재시도)</li>
   <li>Router: 인증/권한 가드, 9개 라우트</li>
 </ul>
@@ -253,8 +253,8 @@
 <ul>
   <li><code>main.ts</code>, <code>App.vue</code>, <code>keycloak.ts</code></li>
   <li><code>api/interceptor.ts</code>, <code>store/auth.ts</code>, <code>store/tab.ts</code></li>
-  <li><code>components/layout/*</code> (ts-spring-fw 복사)</li>
-  <li><code>composables/*</code> 10종 (ts-spring-fw 복사)</li>
+  <li><code>components/layout/*</code> (vue-spring-fw 복사)</li>
+  <li><code>composables/*</code> 10종 (vue-spring-fw 복사)</li>
   <li><code>pages/Page*.vue</code> 9종 (신규)</li>
 </ul>
 
@@ -358,8 +358,8 @@ public static class CamelCaseMapInterceptor implements Interceptor { ... }</pre>
 
 <ol>
   <li>v1/v2/doc 문서 분석 → 백엔드 선택지 3가지</li>
-  <li>ts-spring-fw 풀스택 프레임워크를 UI 로 복사 사용 + 포트 충돌 관리</li>
-  <li>ts-spring-fw 원본 절대 변경 금지, 컴포넌트 예제 활용</li>
+  <li>vue-spring-fw 풀스택 프레임워크를 UI 로 복사 사용 + 포트 충돌 관리</li>
+  <li>vue-spring-fw 원본 절대 변경 금지, 컴포넌트 예제 활용</li>
   <li>지금까지 세션 내용은 모두 최상위 규칙</li>
   <li>계획 수립 후 자율 진행 (subagent 병렬 활용)</li>
   <li>v1/v2 도 통째 복사 금지 — 분석 후 참고만</li>

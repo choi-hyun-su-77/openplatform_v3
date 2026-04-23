@@ -1,7 +1,7 @@
 # openplatform v3 — 통합 그룹웨어
 
 > Spring Boot 3.2 DataSet + Hexagonal BFF + Vue 3 PrimeVue 기반 **옵션 C 하이브리드 그룹웨어**
-> v1(openplatform) 도메인 자산 + v2(openplatform_v2) 포트-어댑터 패턴 + ts-spring-fw UI 컴포넌트를 융합한 차세대 엔터프라이즈 플랫폼
+> v1(openplatform) 도메인 자산 + v2(openplatform_v2) 포트-어댑터 패턴 + vue-spring-fw UI 컴포넌트를 융합한 차세대 엔터프라이즈 플랫폼
 
 ---
 
@@ -12,7 +12,7 @@ openplatform v3 는 레거시 v1 (Spring Legacy + jQuery) 과 v2 (Hexagonal BFF 
 
 - **backend-core** — DataSet 진입점, MyBatis + Flowable (결재 BPMN), 도메인 로직
 - **backend-bff** — WebFlux 기반 Port-Adapter, 외부 시스템(Keycloak/Rocket.Chat/Stalwart/MinIO/LiveKit/Wiki.js) 추상화
-- **ui** — Vue 3 + PrimeVue 4 + Pinia + keycloak-js (ts-spring-fw 컴포넌트 정적 복사)
+- **ui** — Vue 3 + PrimeVue 4 + Pinia + keycloak-js (vue-spring-fw 컴포넌트 정적 복사)
 - **인프라 9종** — PostgreSQL / Redis / Keycloak / MinIO / Rocket.Chat / Stalwart / LiveKit / Wiki.js / Traefik
 
 하이브리드 전략:
@@ -20,7 +20,7 @@ openplatform v3 는 레거시 v1 (Spring Legacy + jQuery) 과 v2 (Hexagonal BFF 
 |---|---|---|
 | DataSet 컨트롤러 / MyBatis 매퍼 | v1 | 패턴만 포팅 (리팩터링) |
 | Port-Adapter / BFF 프록시 | v2 | 확장 포팅 |
-| Vue3 컴포넌트 / composable / store | ts-spring-fw | 원본 복사 (수정 금지) |
+| Vue3 컴포넌트 / composable / store | vue-spring-fw | 원본 복사 (수정 금지) |
 | 결재 BPMN (Flowable) | v1 | 선택 포팅 예정 |
 
 ---
@@ -317,7 +317,7 @@ bash scripts/restore.sh backups/v3-20260414-120000.tar.gz
    - `mvn test` (backend-core, backend-bff)
    - `npm run lint && npm run build` (ui)
    - `docker compose -f infra/docker-compose.yml config -q`
-5. **ts-spring-fw 원본 수정 금지** — 필요 시 v3 하위로 복사 후 수정
+5. **vue-spring-fw 원본 수정 금지** — 필요 시 v3 하위로 복사 후 수정
 6. **문서 동기화 의무**:
    - 포트 추가/변경 → `C:\claude\docker-info.xml` + `C:\claude\port-change-report.md`
    - 새 API → `docs/api-catalog.md`
@@ -331,7 +331,7 @@ bash scripts/restore.sh backups/v3-20260414-120000.tar.gz
 - `docs/api-catalog.md` — 전체 REST API 카탈로그
 - `docs/scenarios.md` — 사용자 시나리오 15종
 - `docs/port-allocation.md` — 포트 할당표
-- `docs/ts-spring-fw-reuse-map.md` — 재사용 자산 추적
+- `docs/vue-spring-fw-reuse-map.md` — 재사용 자산 추적
 - `C:\claude\CLAUDE.md` — 워크스페이스 최상위 규칙
 - `C:\claude\docker-info.xml` — Docker 서비스 레지스트리
 

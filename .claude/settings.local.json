@@ -6,7 +6,7 @@
       "Edit(C:\\claude\\openplatform_v3\\**)",
       "Read(C:\\claude\\openplatform\\**)",
       "Read(C:\\claude\\openplatform_v2\\**)",
-      "Read(C:\\claude\\ts-spring-fw\\**)",
+      "Read(C:\\claude\\vue-spring-fw\\**)",
       "Read(C:\\claude\\docker-info.xml)",
       "Edit(C:\\claude\\docker-info.xml)",
       "Read(C:\\claude\\port-change-report.md)",
@@ -23,8 +23,8 @@
       "Bash(netstat:*)"
     ],
     "deny": [
-      "Write(C:\\claude\\ts-spring-fw\\**)",
-      "Edit(C:\\claude\\ts-spring-fw\\**)",
+      "Write(C:\\claude\\vue-spring-fw\\**)",
+      "Edit(C:\\claude\\vue-spring-fw\\**)",
       "Write(C:\\claude\\openplatform\\**)",
       "Edit(C:\\claude\\openplatform\\**)",
       "Write(C:\\claude\\openplatform_v2\\**)",

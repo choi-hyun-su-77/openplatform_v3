@@ -1,6 +1,6 @@
 /**
  * Axios 인터셉터 — Keycloak 토큰 첨부 + 401 시 갱신 + 5xx 재시도
- * ts-spring-fw 의 JWT 자체발급 버전을 참고하여 Keycloak-js 로 교체.
+ * vue-spring-fw 의 JWT 자체발급 버전을 참고하여 Keycloak-js 로 교체.
  */
 import axios, { type AxiosError, type InternalAxiosRequestConfig } from 'axios';
 import type { Router } from 'vue-router';

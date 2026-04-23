@@ -12,8 +12,8 @@
 - [x] 0-1. v3 디렉토리 구조 생성 (`backend-core`, `backend-bff`, `ui`, `infra`, `docs`, `.claude`)
 - [x] 0-2. info.md / warn.md / fatal.md / TODO.md 생성
 - [x] 0-3. v3 CLAUDE.md (프로젝트 규칙, 상위 상속)
-- [x] 0-4. `.claude/settings.local.json` (권한, ts-spring-fw/v1/v2 쓰기 차단)
-- [x] 0-5. `docs/ts-spring-fw-reuse-map.md` 초안
+- [x] 0-4. `.claude/settings.local.json` (권한, vue-spring-fw/v1/v2 쓰기 차단)
+- [x] 0-5. `docs/vue-spring-fw-reuse-map.md` 초안
 - [x] 0-6. `docs/port-allocation.md`
 - [x] 0-7. `docs/api-catalog.md` (v1 수집 결과)
 - [x] 0-8. `docs/scenarios.md` (시나리오 15개)
@@ -52,10 +52,10 @@
 - [x] 3-8. WikiJsAdapter
 - [x] 3-9. `/api/bff/*` REST 컨트롤러 (BffController, 132 lines, 모든 port 라우트)
 
-## Phase 4: UI 초기화 + ts-spring-fw 컴포넌트 복사 (완료)
+## Phase 4: UI 초기화 + vue-spring-fw 컴포넌트 복사 (완료)
 - [x] 4-1. Vite + Vue 3 + TS + PrimeVue 4 + Pinia 초기화
-- [x] 4-2. ts-spring-fw 컴포넌트 정적 복사 (layout/login/composables/api/store/router/pages)
-- [x] 4-3. `docs/ts-spring-fw-reuse-map.md`
+- [x] 4-2. vue-spring-fw 컴포넌트 정적 복사 (layout/login/composables/api/store/router/pages)
+- [x] 4-3. `docs/vue-spring-fw-reuse-map.md`
 - [x] 4-4. keycloak-js 어댑터로 auth.ts/interceptor.ts 교체
 - [x] 4-5. vite.config.ts 포트/proxy
 

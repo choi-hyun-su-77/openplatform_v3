@@ -4,7 +4,7 @@
 
 ## v3 전용 대역
 - **주력**: 19xxx
-- **UI dev**: 25174 (Vite, ts-spring-fw 25xxx와 비충돌)
+- **UI dev**: 25174 (Vite, vue-spring-fw 25xxx와 비충돌)
 
 ## 인프라
 | 서비스 | 호스트 포트 | 컨테이너 포트 | 비고 |
@@ -40,7 +40,7 @@
 ## 충돌 회피 참조
 - v1 (openplatform): 17xxx
 - v2 (openplatform_v2): 18xxx
-- ts-spring-fw: 25xxx (원본 사용 시)
+- vue-spring-fw: 25xxx (원본 사용 시)
 - v3 (openplatform_v3): 19xxx + 25174 (UI dev)
 
 `C:\claude\docker-info.xml` 의 `<project name="openplatform_v3">` 블록과 동기화 유지.
