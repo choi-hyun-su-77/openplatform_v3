@@ -1,0 +1,157 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.platform.v3.core.ux.mapper.UxMapper">
+
+    <!-- ============================================================
+         즐겨찾기 (ux_favorite)
+         ============================================================ -->
+
+    <select id="selectFavorites" resultType="map">
+        SELECT fav_id, employee_no, target_type, target_id,
+               label, url, icon, sort_order, created_at
+        FROM platform_v3.ux_favorite
+        WHERE employee_no = #{employeeNo}
+        ORDER BY sort_order, fav_id
+    </select>
+
+    <select id="selectFavoriteById" resultType="map">
+        SELECT fav_id, employee_no, target_type, target_id,
+               label, url, icon, sort_order, created_at
+        FROM platform_v3.ux_favorite
+        WHERE fav_id = #{favId}
+    </select>
+
+    <insert id="insertFavorite" parameterType="map" useGeneratedKeys="true"
+            keyProperty="favId" keyColumn="fav_id">
+        INSERT INTO platform_v3.ux_favorite
+            (employee_no, target_type, target_id, label, url, icon, sort_order, created_at)
+        VALUES
+            (#{employeeNo}, #{targetType}, #{targetId},
+             #{label}, #{url}, #{icon},
+             COALESCE(#{sortOrder}, 0), NOW())
+        ON CONFLICT (employee_no, target_type, target_id) DO UPDATE SET
+            label = EXCLUDED.label,
+            url = EXCLUDED.url,
+            icon = EXCLUDED.icon
+    </insert>
+
+    <update id="updateFavoriteSort">
+        UPDATE platform_v3.ux_favorite
+        SET sort_order = #{sortOrder}
+        WHERE fav_id = #{favId}
+    </update>
+
+    <delete id="deleteFavorite">
+        DELETE FROM platform_v3.ux_favorite
+        WHERE fav_id = #{favId} AND employee_no = #{employeeNo}
+    </delete>
+
+    <!-- ============================================================
+         알림 환경설정 (ux_notify_pref)
+         ============================================================ -->
+
+    <select id="selectNotifyPref" resultType="map">
+        SELECT pref_id, employee_no, category, channel, enabled, updated_at
+        FROM platform_v3.ux_notify_pref
+        WHERE employee_no = #{employeeNo}
+        ORDER BY category, channel
+    </select>
+
+    <insert id="upsertNotifyPref" parameterType="map">
+        INSERT INTO platform_v3.ux_notify_pref
+            (employee_no, category, channel, enabled, updated_at)
+        VALUES
+            (#{employeeNo}, #{category}, #{channel}, #{enabled}, NOW())
+        ON CONFLICT (employee_no, category, channel) DO UPDATE SET
+            enabled    = EXCLUDED.enabled,
+            updated_at = NOW()
+    </insert>
+
+    <select id="selectNotifyPrefOne" resultType="map">
+        SELECT pref_id, employee_no, category, channel, enabled
+        FROM platform_v3.ux_notify_pref
+        WHERE employee_no = #{employeeNo}
+          AND category    = #{category}
+          AND channel     = #{channel}
+        LIMIT 1
+    </select>
+
+    <!-- ============================================================
+         통합 검색 (4 도메인 별도 query → service 단에서 합산 응답)
+         50명 규모 기준 ILIKE 충분. 인덱스 부족하면 추후 pg_trgm 도입.
+         ============================================================ -->
+
+    <!-- POST: bd_post 검색 (제목 또는 본문 ILIKE) -->
+    <select id="searchPosts" resultType="map">
+        SELECT p.post_id, p.board_type, p.dept_id, d.dept_name,
+               p.title, p.created_by, p.view_count, p.created_at
+        FROM platform_v3.bd_post p
+        LEFT JOIN platform_v3.org_department d ON p.dept_id = d.dept_id
+        WHERE p.deleted_at IS NULL
+          AND (p.title ILIKE '%' || #{keyword} || '%'
+               OR p.content ILIKE '%' || #{keyword} || '%')
+        ORDER BY p.created_at DESC
+        LIMIT 10
+    </select>
+
+    <!-- DOC: ap_document 검색 — drafter 본인 또는 결재선에 포함된 문서만 -->
+    <select id="searchDocs" resultType="map">
+        SELECT DISTINCT d.doc_id, d.doc_title, d.form_code,
+               d.drafter_no, d.drafter_name, d.status, d.created_at
+        FROM platform_v3.ap_document d
+        WHERE d.doc_title ILIKE '%' || #{keyword} || '%'
+          AND (
+              d.drafter_no = #{userNo}
+              OR EXISTS (
+                  SELECT 1 FROM platform_v3.ap_approval_line l
+                  WHERE l.doc_id = d.doc_id
+                    AND l.approver_no = #{userNo}
+              )
+          )
+        ORDER BY d.created_at DESC
+        LIMIT 10
+    </select>
+
+    <!-- EMP: org_employee 검색 (이름 / 이메일 / 직책 ILIKE) -->
+    <select id="searchEmployees" resultType="map">
+        SELECT e.employee_id, e.employee_no, e.employee_name,
+               e.dept_id, d.dept_name,
+               e.position_id, p.position_name,
+               e.email, e.phone
+        FROM platform_v3.org_employee e
+        INNER JOIN platform_v3.org_department d ON e.dept_id = d.dept_id
+        INNER JOIN platform_v3.org_position p ON e.position_id = p.position_id
+        WHERE e.status = 'ACTIVE'
+          AND (e.employee_name ILIKE '%' || #{keyword} || '%'
+               OR e.email ILIKE '%' || #{keyword} || '%'
+               OR p.position_name ILIKE '%' || #{keyword} || '%')
+        ORDER BY e.employee_name
+        LIMIT 10
+    </select>
+
+    <!--
+      FILE: dl_file 검색 — 사용자 접근 가능 폴더(COMPANY/본인 부서 DEPT/본인 PERSONAL) 한정.
+      DataLibraryMapper.searchFiles 와 같은 권한 모델.
+    -->
+    <select id="searchFiles" resultType="map">
+        SELECT f.file_id, f.folder_id, f.file_name, f.size_bytes, f.mime_type,
+               f.uploader_no, f.uploaded_at, f.download_count,
+               fo.folder_name, fo.scope
+        FROM platform_v3.dl_file f
+        JOIN platform_v3.dl_folder fo ON f.folder_id = fo.folder_id
+        WHERE f.file_name ILIKE '%' || #{keyword} || '%'
+          AND (
+              fo.scope = 'COMPANY'
+              <if test="deptId != null">
+                  OR (fo.scope = 'DEPT' AND fo.owner_dept_id = #{deptId})
+              </if>
+              <if test="employeeNo != null and employeeNo != ''">
+                  OR (fo.scope = 'PERSONAL' AND fo.owner_no = #{employeeNo})
+              </if>
+          )
+        ORDER BY f.uploaded_at DESC
+        LIMIT 10
+    </select>
+
+</mapper>

@@ -65,6 +65,10 @@
         </Button>
         <Menu ref="localeMenuRef" :model="localeMenuItems" :popup="true" />
       </div>
+      <!-- Phase 14: 통합 검색바 (헤더 우측 영역 좌측 끝) -->
+      <SearchBar />
+      <!-- Phase 14: 즐겨찾기 레일 (★ 최대 8개) -->
+      <FavoriteRail />
       <!-- 알림 벨 (SSE 실시간) -->
       <NotificationBell />
       <!-- 로그인 사용자 정보 표시: 이름 (부서명) -->
@@ -98,6 +102,8 @@ import Button from 'primevue/button'
 import Menu from 'primevue/menu'
 import ThemeSettingsDrawer from './ThemeSettingsDrawer.vue'
 import NotificationBell from '@/components/common/NotificationBell.vue'
+import SearchBar from '@/components/layout/SearchBar.vue'
+import FavoriteRail from '@/components/layout/FavoriteRail.vue'
 
 /**
  * 부모(LayoutDefault)로 전달하는 이벤트

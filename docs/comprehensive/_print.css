@@ -1,0 +1,91 @@
+@page {
+  size: A4;
+  margin: 2cm 1.8cm;
+  @bottom-center {
+    content: counter(page) " / " counter(pages);
+    font-size: 9pt;
+    color: #888;
+  }
+  @top-right {
+    content: "openplatform_v3 — v1.0";
+    font-size: 9pt;
+    color: #888;
+  }
+}
+
+body {
+  font-family: "Malgun Gothic", "Apple SD Gothic Neo", "Noto Sans CJK KR", sans-serif;
+  font-size: 10.5pt;
+  line-height: 1.55;
+  color: #222;
+  max-width: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+h1 { font-size: 22pt; border-bottom: 2px solid #333; padding-bottom: 4pt; page-break-before: always; }
+h1:first-of-type { page-break-before: avoid; }
+h2 { font-size: 15pt; border-bottom: 1px solid #ccc; padding-bottom: 2pt; margin-top: 18pt; }
+h3 { font-size: 12.5pt; margin-top: 14pt; }
+h4 { font-size: 11pt; }
+
+code {
+  font-family: "Consolas", "Cascadia Mono", "Courier New", monospace;
+  background: #f5f5f5;
+  padding: 1px 4px;
+  border-radius: 3px;
+  font-size: 9.5pt;
+}
+
+pre {
+  background: #f5f5f5;
+  border: 1px solid #ddd;
+  padding: 8pt;
+  border-radius: 4px;
+  font-size: 9pt;
+  line-height: 1.4;
+  overflow-wrap: break-word;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  page-break-inside: avoid;
+}
+
+pre code { background: none; padding: 0; font-size: 9pt; }
+
+table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 8pt 0;
+  font-size: 9.5pt;
+  page-break-inside: avoid;
+}
+th, td {
+  border: 1px solid #bbb;
+  padding: 4pt 6pt;
+  text-align: left;
+  vertical-align: top;
+}
+th { background: #eef; font-weight: 600; }
+
+blockquote {
+  border-left: 3px solid #888;
+  padding: 0 10pt;
+  color: #555;
+  margin: 8pt 0;
+}
+
+a { color: #06c; text-decoration: none; }
+
+#TOC {
+  page-break-after: always;
+}
+#TOC ul {
+  list-style: none;
+  padding-left: 14pt;
+}
+
+div[style*="page-break-before"] {
+  page-break-before: always;
+}
+
+img { max-width: 100%; }

@@ -2,9 +2,11 @@ package com.platform.v3.bff.api;
 
 import com.platform.v3.bff.port.*;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 import java.util.Map;
@@ -40,6 +42,56 @@ public class BffController {
     @GetMapping("/identity/me")
     public Map<String, Object> me(JwtAuthenticationToken auth) {
         return identityPort.getMe(token(auth));
+    }
+
+    // ─── Phase 14 Track 5: Admin Identity (ROLE_ADMIN only) ──────────────────
+    @PostMapping("/identity/users")
+    public Map<String, Object> createUser(@RequestBody Map<String, Object> body, JwtAuthenticationToken auth) {
+        requireAdmin(auth);
+        return identityPort.createUser(body);
+    }
+
+    @PutMapping("/identity/users/{username}")
+    public Map<String, Object> updateUser(@PathVariable String username,
+                                          @RequestBody Map<String, Object> body,
+                                          JwtAuthenticationToken auth) {
+        requireAdmin(auth);
+        return identityPort.updateUser(username, body);
+    }
+
+    @PutMapping("/identity/users/{username}/active")
+    public Map<String, Object> setUserActive(@PathVariable String username,
+                                             @RequestBody Map<String, Object> body,
+                                             JwtAuthenticationToken auth) {
+        requireAdmin(auth);
+        boolean active = Boolean.TRUE.equals(body.get("active"));
+        return identityPort.setActive(username, active);
+    }
+
+    @PostMapping("/identity/users/{username}/reset-password")
+    public Map<String, Object> resetPassword(@PathVariable String username,
+                                             @RequestBody Map<String, Object> body,
+                                             JwtAuthenticationToken auth) {
+        requireAdmin(auth);
+        String temp = (String) body.getOrDefault("temporaryPassword", "temp123!");
+        return identityPort.resetPassword(username, temp);
+    }
+
+    @SuppressWarnings("unchecked")
+    private void requireAdmin(JwtAuthenticationToken auth) {
+        if (auth == null) throw new ResponseStatusException(HttpStatus.UNAUTHORIZED);
+        Jwt jwt = (Jwt) auth.getPrincipal();
+        Map<String, Object> realmAccess = jwt.getClaimAsMap("realm_access");
+        if (realmAccess != null) {
+            Object roles = realmAccess.get("roles");
+            if (roles instanceof List<?> list) {
+                for (Object r : list) {
+                    String s = String.valueOf(r);
+                    if ("ROLE_ADMIN".equals(s) || "ADMIN".equals(s)) return;
+                }
+            }
+        }
+        throw new ResponseStatusException(HttpStatus.FORBIDDEN, "ROLE_ADMIN required");
     }
 
     @GetMapping("/messenger/channels")

@@ -1,0 +1,27 @@
+package com.platform.v3.core.__domain-kebab__;
+
+import com.platform.v3.core.common.dataset.DataSetServiceMapping;
+import com.platform.v3.core.__domain-kebab__.mapper.__DomainPascal__Mapper;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+import java.util.*;
+
+@Slf4j
+@Service
+@RequiredArgsConstructor
+public class __DomainPascal__Service {
+
+    private final __DomainPascal__Mapper mapper;
+
+    /** Read-only aggregation. INSERT/UPDATE/DELETE 금지. */
+    @DataSetServiceMapping("__domain-kebab__/searchAggregate")
+    public Map<String, Object> searchAggregate(Map<String, Object> datasets, String currentUser) {
+        Map<?, ?> ds = (Map<?, ?>) datasets.getOrDefault("ds_search", Map.of());
+        String keyword = String.valueOf(ds.getOrDefault("keyword", ""));
+        log.debug("__domain-kebab__/aggregate user={} keyword={}", currentUser, keyword);
+
+        List<Map<String, Object>> rows = mapper.selectAggregate(currentUser, keyword);
+        return Map.of("ds_aggregate", Map.of("rows", rows, "totalCount", rows.size()));
+    }
+}

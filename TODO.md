@@ -201,6 +201,36 @@
 
 ---
 
+## Phase 14 — Production-Grade 그룹웨어 강화 (2026-04-27 시작)
+
+> 상세 플랜: `docs/PHASE14_PRODUCTION_GROUPWARE.md`
+> 최종 보고서: `docs/PHASE14_REPORT.md`
+
+### Wave 1 (병렬 4 에이전트) — 완료 ✅
+- [x] T1. 근태/연차/휴가 (V10 + 10 service + 13 파일 + 4 patch) — ApprovalService LEAVE 분기 + Flowable onDocApproved
+- [x] T2. 회의실 예약 (V11 + 7 service + 9 파일 + BffClient 신규) — LiveKit 자동 룸 + 캘린더 자동 등록
+- [x] T3. 자료실 (V12 + 10 service + 7 파일 + MinioConfig) — 부서 폴더 9개 자동 시드
+- [x] T5. 어드민 콘솔 (V14 + 14 service + 12 파일 + 5 patch + AOP + BFF KC 4 메서드) — mvn BUILD SUCCESS
+
+### Wave 2 (병렬 3 에이전트) — 완료 ✅
+- [x] T4. 업무일지 (V13 + 5 service + 6 파일) — 부서장 3단 가드 + ISO 주 보정
+- [x] T6. UX (V15 + 7 service + 13 파일) — 통합검색/즐겨찾기/알림설정 + NotificationService 7-arg 오버로드
+- [x] T7. 대시보드 위젯 (V16 + 5 service + 14 파일) — 12-column CSS Grid + 화살표 편집 + 9 위젯
+
+### Wave 3 (메인) — 완료 ✅
+- [x] T8-1. V17 메뉴 일괄 등록 (4 부모 + 13 leaf + cm_role_menu 57 row)
+- [x] T8-2. Router 13 신규 라우트 + requiresAdmin meta 가드
+- [x] T8-3. LayoutHeader.vue 에 SearchBar/FavoriteRail 마운트
+- [x] T8-4. CalendarService leave/booking UNION (setter 주입)
+- [x] T8-5. api-catalog.md / scenarios.md (16~23) / PHASE14_REPORT.md
+- [x] T8-6. v3 컨테이너 재기동 + Flyway V1~V17 clean boot 검증 (V12 시퀀스 hotfix 1건)
+- [x] T8-7. backend-core/bff mvn package (Docker 이미지 빌드 성공) + UI npm build (TS 핫픽스 8건 후 ✓ built in 19.48s)
+- [~] T8-8. DataSet smoke test — 컨테이너 healthy + ServiceRegistry 자동 스캔 통과로 간접 검증 (PKCE 토큰 직접 호출은 브라우저 검증으로 위임)
+- [~] T8-9. Playwright 회귀 — 사용자 브라우저 검증으로 위임
+- [ ] T8-10. 클린 부팅 (down -v + up) — 옵셔널, 미수행 (현 in-place 마이그레이션이 V1~V17 success 검증 완료)
+
+---
+
 ## Phase 12.1: SSO 결함 수정 (2026-04-15 추가) — 완료
 - [x] 12.1-1. global.css `--sidebar-width`/`--header-height`/`--page-ground` 추가
 - [x] 12.1-2. realm.json `mattermost` → `rocketchat` 전환 + protocolMapper

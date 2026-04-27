@@ -1,0 +1,56 @@
+package com.platform.v3.core.__domain-kebab__;
+
+import com.platform.v3.core.common.dataset.DataSetServiceMapping;
+import com.platform.v3.core.__domain-kebab__.mapper.__DomainPascal__Mapper;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.*;
+
+@Slf4j
+@Service
+@RequiredArgsConstructor
+public class __DomainPascal__Service {
+
+    private final __DomainPascal__Mapper mapper;
+
+    @DataSetServiceMapping("__domain-kebab__/searchList")
+    public Map<String, Object> searchList(Map<String, Object> datasets, String currentUser) {
+        Map<?, ?> ds = (Map<?, ?>) datasets.getOrDefault("ds_search", Map.of());
+        String keyword = String.valueOf(ds.getOrDefault("keyword", ""));
+        log.info("__domain-kebab__/searchList user={} keyword={}", currentUser, keyword);
+        List<Map<String, Object>> rows = mapper.selectList(keyword);
+        return Map.of("ds_list", Map.of("rows", rows, "totalCount", rows.size()));
+    }
+
+    @DataSetServiceMapping("__domain-kebab__/searchDetail")
+    public Map<String, Object> searchDetail(Map<String, Object> datasets, String currentUser) {
+        Map<?, ?> ds = (Map<?, ?>) datasets.get("ds_data");
+        String id = String.valueOf(ds.get("id"));
+        Map<String, Object> detail = mapper.selectDetail(id);
+        if (detail == null) {
+            throw com.platform.v3.core.common.exception.BusinessException.notFound("__domain-kebab__ not found: " + id);
+        }
+        return Map.of("ds_detail", Map.of("rows", List.of(detail)));
+    }
+
+    @Transactional
+    @DataSetServiceMapping("__domain-kebab__/save")
+    public Map<String, Object> save(Map<String, Object> datasets, String currentUser) {
+        log.info("__domain-kebab__/save user={}", currentUser);
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> rows = (List<Map<String, Object>>) ((Map<?, ?>) datasets.get("ds_data")).get("rows");
+        int saved = 0;
+        for (Map<String, Object> row : rows) {
+            String rowType = String.valueOf(row.get("_rowType"));
+            switch (rowType) {
+                case "I" -> { row.put("createdBy", currentUser); saved += mapper.insert__DomainPascal__(row); }
+                case "U" -> saved += mapper.update__DomainPascal__(row);
+                case "D" -> saved += mapper.delete__DomainPascal__(String.valueOf(row.get("id")));
+            }
+        }
+        return Map.of("saved", saved);
+    }
+}

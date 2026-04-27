@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.platform.v3.core.worklog.mapper.WorkReportMapper">
+
+    <!--
+      upsertDaily — Phase 14 §6.6 핵심 비즈니스.
+      UNIQUE(employee_no, report_date) 를 충돌 키로 사용하여 같은 날짜 재저장 시
+      모든 본문 컬럼이 갱신되며 updated_at 도 NOW() 로 갱신된다.
+      report_date 는 'YYYY-MM-DD' 문자열로 들어오므로 CAST 필수.
+    -->
+    <insert id="upsertDaily" parameterType="map" useGeneratedKeys="true"
+            keyProperty="reportId" keyColumn="report_id">
+        INSERT INTO platform_v3.wr_daily
+            (employee_no, report_date, done_today, plan_tomorrow, issue,
+             mood, hours_worked, created_at, updated_at)
+        VALUES
+            (#{employeeNo}, CAST(#{reportDate} AS DATE),
+             #{doneToday}, #{planTomorrow}, #{issue},
+             #{mood}, #{hoursWorked},
+             NOW(), NOW())
+        ON CONFLICT (employee_no, report_date) DO UPDATE SET
+            done_today    = EXCLUDED.done_today,
+            plan_tomorrow = EXCLUDED.plan_tomorrow,
+            issue         = EXCLUDED.issue,
+            mood          = EXCLUDED.mood,
+            hours_worked  = EXCLUDED.hours_worked,
+            updated_at    = NOW()
+    </insert>
+
+    <select id="selectOne" resultType="map">
+        SELECT report_id, employee_no, report_date,
+               done_today, plan_tomorrow, issue, mood, hours_worked,
+               created_at, updated_at
+        FROM platform_v3.wr_daily
+        WHERE employee_no = #{employeeNo}
+          AND report_date = CAST(#{reportDate} AS DATE)
+    </select>
+
+    <select id="selectMyWeek" resultType="map">
+        SELECT report_id, employee_no, report_date,
+               done_today, plan_tomorrow, issue, mood, hours_worked,
+               created_at, updated_at
+        FROM platform_v3.wr_daily
+        WHERE employee_no = #{employeeNo}
+          AND report_date BETWEEN CAST(#{weekStart} AS DATE)
+                              AND CAST(#{weekStart} AS DATE) + INTERVAL '6 day'
+        ORDER BY report_date
+    </select>
+
+    <select id="selectMonth" resultType="map">
+        SELECT report_id, employee_no, report_date,
+               done_today, plan_tomorrow, issue, mood, hours_worked,
+               created_at, updated_at
+        FROM platform_v3.wr_daily
+        WHERE employee_no = #{employeeNo}
+          AND TO_CHAR(report_date, 'YYYY-MM') = #{yearMonth}
+        ORDER BY report_date
+    </select>
+
+    <!--
+      selectTeamDaily — 부서원 N명 × 1일.
+      OUTER JOIN 으로 미작성 직원도 행에 포함 (report_id 가 NULL).
+    -->
+    <select id="selectTeamDaily" resultType="map">
+        SELECT e.employee_no, e.employee_name, e.dept_id,
+               w.report_id, w.report_date,
+               w.done_today, w.plan_tomorrow, w.issue, w.mood, w.hours_worked,
+               w.updated_at
+        FROM platform_v3.org_employee e
+        LEFT JOIN platform_v3.wr_daily w
+               ON w.employee_no = e.employee_no
+              AND w.report_date = CAST(#{reportDate} AS DATE)
+        WHERE e.dept_id = #{deptId}
+          AND e.status  = 'ACTIVE'
+        ORDER BY e.employee_name
+    </select>
+
+    <!--
+      selectTeamWeekly — 부서원 N명 × 7일치 (weekStart=월요일).
+      service 레이어에서 직원별 weekday 매트릭스로 재구성한다.
+    -->
+    <select id="selectTeamWeekly" resultType="map">
+        SELECT e.employee_no, e.employee_name, e.dept_id,
+               w.report_id, w.report_date,
+               w.done_today, w.plan_tomorrow, w.issue, w.mood, w.hours_worked,
+               w.updated_at
+        FROM platform_v3.org_employee e
+        LEFT JOIN platform_v3.wr_daily w
+               ON w.employee_no = e.employee_no
+              AND w.report_date BETWEEN CAST(#{weekStart} AS DATE)
+                                    AND CAST(#{weekStart} AS DATE) + INTERVAL '6 day'
+        WHERE e.dept_id = #{deptId}
+          AND e.status  = 'ACTIVE'
+        ORDER BY e.employee_name, w.report_date
+    </select>
+
+    <!--
+      selectMyWrittenDates — 미니 캘린더 dot 표시용. 작성된 날짜만 리턴.
+    -->
+    <select id="selectMyWrittenDates" resultType="map">
+        SELECT report_date
+        FROM platform_v3.wr_daily
+        WHERE employee_no = #{employeeNo}
+          AND TO_CHAR(report_date, 'YYYY-MM') = #{yearMonth}
+        ORDER BY report_date
+    </select>
+
+</mapper>

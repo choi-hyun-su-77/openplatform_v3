@@ -1,0 +1,20 @@
+-- V{N}__{__domain-kebab__}_menu.sql
+-- 메뉴 등록 8단계 중 Step 1~3 (DB 부분)
+
+-- (Step 1) 부모 메뉴 — 신규 부모 그룹이 필요할 때만 활성화
+-- INSERT INTO platform_v3.cm_menu (menu_id, menu_name, menu_path, parent_menu_id, menu_level, sort_order, icon)
+-- VALUES ('__parent_id__', '__parent_name_ko__', NULL, NULL, 1, __parent_sort__, '__parent_icon__')
+-- ON CONFLICT (menu_id) DO NOTHING;
+
+-- (Step 2) 자식 메뉴
+INSERT INTO platform_v3.cm_menu (menu_id, menu_name, menu_path, parent_menu_id, menu_level, sort_order, icon)
+VALUES ('__domain-kebab__', '__domainKorean__', '/__domain-kebab__', '__parent_id__', 2, __sort_order__, '__icon__')
+ON CONFLICT (menu_id) DO NOTHING;
+
+-- (Step 3) Role-Menu 권한
+INSERT INTO platform_v3.cm_role_menu
+  (role_id, menu_id, can_read, can_create, can_update, can_delete, can_export, can_print)
+VALUES
+  ('ROLE_USER',  '__domain-kebab__', TRUE, FALSE, FALSE, FALSE, TRUE, TRUE),
+  ('ROLE_ADMIN', '__domain-kebab__', TRUE, TRUE,  TRUE,  TRUE,  TRUE, TRUE)
+ON CONFLICT (role_id, menu_id) DO NOTHING;

@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.platform.v3.core.widget.mapper.WidgetMapper">
+
+    <!-- ============================================================
+         카탈로그 (db_widget)
+         ============================================================ -->
+
+    <select id="selectCatalog" resultType="map">
+        SELECT widget_code, title, description, default_w, default_h, category, active
+          FROM platform_v3.db_widget
+         WHERE active = TRUE
+         ORDER BY category, widget_code
+    </select>
+
+    <select id="selectCatalogByCode" resultType="map">
+        SELECT widget_code, title, description, default_w, default_h, category, active
+          FROM platform_v3.db_widget
+         WHERE widget_code = #{widgetCode}
+    </select>
+
+    <!-- ============================================================
+         사용자 배치 (db_user_widget)
+         ============================================================ -->
+
+    <select id="selectMine" resultType="map">
+        SELECT u.id,
+               u.employee_no,
+               u.widget_code,
+               w.title,
+               w.description,
+               w.category,
+               u.pos_x,
+               u.pos_y,
+               u.width,
+               u.height,
+               u.config_json,
+               u.sort_order
+          FROM platform_v3.db_user_widget u
+          JOIN platform_v3.db_widget w ON w.widget_code = u.widget_code
+         WHERE u.employee_no = #{employeeNo}
+           AND w.active      = TRUE
+         ORDER BY u.sort_order, u.pos_y, u.pos_x, u.id
+    </select>
+
+    <select id="countMine" resultType="int">
+        SELECT COUNT(*)
+          FROM platform_v3.db_user_widget
+         WHERE employee_no = #{employeeNo}
+    </select>
+
+    <!--
+        UPSERT: 같은 employee_no+widget_code 행이 있으면 위치/크기/config 갱신.
+        config_json 은 java 측에서 JSON 문자열로 직렬화하여 전달.
+    -->
+    <insert id="insertUserWidget" parameterType="map">
+        INSERT INTO platform_v3.db_user_widget
+            (employee_no, widget_code, pos_x, pos_y, width, height, config_json, sort_order, created_at, updated_at)
+        VALUES
+            (#{employeeNo},
+             #{widgetCode},
+             COALESCE(#{posX}, 0),
+             COALESCE(#{posY}, 0),
+             COALESCE(#{width}, 3),
+             COALESCE(#{height}, 1),
+             CAST(#{configJson} AS JSONB),
+             COALESCE(#{sortOrder}, 0),
+             NOW(), NOW())
+        ON CONFLICT (employee_no, widget_code) DO UPDATE
+            SET pos_x       = EXCLUDED.pos_x,
+                pos_y       = EXCLUDED.pos_y,
+                width       = EXCLUDED.width,
+                height      = EXCLUDED.height,
+                config_json = EXCLUDED.config_json,
+                sort_order  = EXCLUDED.sort_order,
+                updated_at  = NOW()
+    </insert>
+
+    <update id="updateUserWidget" parameterType="map">
+        UPDATE platform_v3.db_user_widget
+           SET pos_x       = COALESCE(#{posX},  pos_x),
+               pos_y       = COALESCE(#{posY},  pos_y),
+               width       = COALESCE(#{width}, width),
+               height      = COALESCE(#{height}, height),
+               config_json = COALESCE(CAST(#{configJson} AS JSONB), config_json),
+               sort_order  = COALESCE(#{sortOrder}, sort_order),
+               updated_at  = NOW()
+         WHERE employee_no = #{employeeNo}
+           AND widget_code = #{widgetCode}
+    </update>
+
+    <delete id="deleteUserWidget">
+        DELETE FROM platform_v3.db_user_widget
+         WHERE employee_no = #{employeeNo}
+           AND widget_code = #{widgetCode}
+    </delete>
+
+</mapper>

@@ -1,11 +1,14 @@
 package com.platform.v3.core.notification;
 
+import com.platform.v3.core.common.BffClient;
 import com.platform.v3.core.common.DataSetSupport;
 import com.platform.v3.core.dataset.DataSetServiceMapping;
 import com.platform.v3.core.notification.mapper.NotificationMapper;
 import com.platform.v3.core.org.mapper.OrgMapper;
+import com.platform.v3.core.ux.NotifyPrefService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
@@ -25,6 +28,24 @@ public class NotificationService {
     private final NotificationMapper notificationMapper;
     private final OrgMapper orgMapper;
     private final Map<Long, List<SseEmitter>> emitters = new ConcurrentHashMap<>();
+
+    /**
+     * Phase 14 트랙 6 — UX 알림 환경설정 (ux_notify_pref).
+     * setter 주입(required=false): 트랙 6 이전 컴파일/통합 환경에서도 도메인이 동작하도록
+     * (PORTAL=ON, EMAIL/MESSENGER=OFF 기본값으로 fallback).
+     */
+    private NotifyPrefService notifyPrefService;
+    private BffClient bffClient;
+
+    @Autowired(required = false)
+    public void setNotifyPrefService(NotifyPrefService notifyPrefService) {
+        this.notifyPrefService = notifyPrefService;
+    }
+
+    @Autowired(required = false)
+    public void setBffClient(BffClient bffClient) {
+        this.bffClient = bffClient;
+    }
 
     public NotificationService(NotificationMapper notificationMapper, OrgMapper orgMapper) {
         this.notificationMapper = notificationMapper;
@@ -133,13 +154,30 @@ public class NotificationService {
     }
 
     /**
-     * employee_no 문자열로 수신자를 지정하는 편의 메서드.
-     * OrgMapper 로 employee_id 를 조회하여 {@link #notify(Long, Long, String, String, String, String)} 호출.
-     * ApprovalService/BoardService 등 도메인 서비스는 drafter_no / approver_no (문자열) 만 갖고 있으므로
-     * 이 메서드로 SSE 수신자 ID 를 명시적으로 매핑한다.
+     * employee_no 문자열로 수신자를 지정하는 편의 메서드 (기존 시그니처 — 호환성 유지).
+     * Phase 14 트랙 6 의 카테고리 분기가 없으므로 PORTAL(SSE) 채널만 발송한다.
+     * <p>ApprovalService/BoardService 등 기존 호출자는 본 메서드를 변경 없이 사용한다.
      */
     public void notifyByUserNo(String recipientUserNo, Long docId, String type, String channel,
                                String title, String content) {
+        notifyByUserNo(recipientUserNo, docId, type, channel, title, content, null);
+    }
+
+    /**
+     * Phase 14 트랙 6 — 카테고리 인자 추가 오버로드.
+     *
+     * <p>category 가 null 이면 기존과 동일하게 PORTAL(SSE) 채널만 발송 (기존 호출자 호환).
+     * <p>category 가 있으면 {@link NotifyPrefService} 로 사용자 환경설정 매트릭스를 조회하여
+     * <ul>
+     *   <li>PORTAL    enabled → SSE + DB insert (기존 동작)</li>
+     *   <li>EMAIL     enabled → BFF /api/bff/mail/send 호출 (실패 시 warn)</li>
+     *   <li>MESSENGER enabled → BffClient.sendNotificationDm (현재 stub, warn 후 스킵)</li>
+     * </ul>
+     *
+     * @param category UX 카테고리 (APPROVAL|BOARD|CALENDAR|MENTION|ROOM|LEAVE) — null 가능
+     */
+    public void notifyByUserNo(String recipientUserNo, Long docId, String type, String channel,
+                               String title, String content, String category) {
         if (recipientUserNo == null || recipientUserNo.isBlank()) {
             log.warn("notifyByUserNo skipped: recipientUserNo is blank docId={}", docId);
             return;
@@ -149,7 +187,45 @@ public class NotificationService {
             log.warn("notifyByUserNo skipped: employee not found userNo={} docId={}", recipientUserNo, docId);
             return;
         }
-        Long employeeId = DataSetSupport.toLong(emp.get("employee_id"));
-        notify(docId, employeeId, type, channel, title, content);
+        Long employeeId = DataSetSupport.toLong(
+                emp.get("employee_id") != null ? emp.get("employee_id") : emp.get("employeeId"));
+
+        // category 가 없거나 NotifyPrefService 미주입(트랙 6 이전 환경) 이면 기존 PORTAL 만 발송.
+        if (category == null || notifyPrefService == null) {
+            notify(docId, employeeId, type, channel, title, content);
+            return;
+        }
+
+        // ─── PORTAL (SSE + DB insert) ─────────────────────────────────────
+        if (notifyPrefService.isChannelEnabled(recipientUserNo, category, "PORTAL")) {
+            notify(docId, employeeId, type, channel, title, content);
+        } else {
+            log.debug("PORTAL 채널 비활성 — userNo={} category={}", recipientUserNo, category);
+        }
+
+        // ─── EMAIL (BFF /api/bff/mail/send) ───────────────────────────────
+        if (notifyPrefService.isChannelEnabled(recipientUserNo, category, "EMAIL")) {
+            String toEmail = String.valueOf(emp.getOrDefault("email", ""));
+            if (toEmail != null && !toEmail.isBlank() && bffClient != null) {
+                String subject = title != null ? title : "[알림]";
+                String body = (content != null ? content : "") + "\n\n— openplatform v3";
+                bffClient.sendNotificationEmail(toEmail, subject, body);
+            } else {
+                log.warn("EMAIL 채널 enabled 이지만 발송 스킵 — userNo={} email={} bff={}",
+                        recipientUserNo, toEmail, bffClient != null);
+            }
+        }
+
+        // ─── MESSENGER (Rocket.Chat DM) ────────────────────────────────────
+        // 현재 RocketChatAdapter.sendDm 미구현 — 활성이어도 warn 후 스킵.
+        if (notifyPrefService.isChannelEnabled(recipientUserNo, category, "MESSENGER")) {
+            String username = String.valueOf(emp.getOrDefault("keycloak_user_id",
+                    emp.getOrDefault("keycloakUserId", recipientUserNo)));
+            if (bffClient != null) {
+                bffClient.sendNotificationDm(username, title + " - " + content);
+            }
+            log.warn("MESSENGER 채널은 RocketChatAdapter.sendDm 미구현 — userNo={} skipped",
+                    recipientUserNo);
+        }
     }
 }

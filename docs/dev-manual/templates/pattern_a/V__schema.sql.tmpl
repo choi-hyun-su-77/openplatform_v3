@@ -1,0 +1,15 @@
+-- V{N}__{__domain-kebab__}_schema.sql
+-- 도메인: __domainKorean__ (__DomainPascal__)
+-- Pattern A 표준 CRUD 도메인 테이블
+
+CREATE TABLE IF NOT EXISTS platform_v3.__dm_table_prefix__main (
+    __domain_snake___id  VARCHAR(32) PRIMARY KEY,
+    title                VARCHAR(256) NOT NULL,
+    content              TEXT,
+    created_by           VARCHAR(64),
+    created_at           TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at           TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx___dm_table_prefix__main_created
+  ON platform_v3.__dm_table_prefix__main(created_at DESC);

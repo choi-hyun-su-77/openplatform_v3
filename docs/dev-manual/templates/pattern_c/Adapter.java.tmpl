@@ -1,0 +1,46 @@
+package com.platform.v3.bff.adapter;
+
+import com.platform.v3.bff.port.__CapabilityPascal__Port;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Component;
+import org.springframework.web.reactive.function.client.WebClient;
+import reactor.core.publisher.Mono;
+import java.util.Map;
+
+@Slf4j
+@Component
+@RequiredArgsConstructor
+public class __ExternalPascal____CapabilityPascal__Adapter implements __CapabilityPascal__Port {
+
+    private final WebClient webClient = WebClient.create();
+    // private final ExternalProperties props;
+
+    @Override
+    public Mono<Map<String, Object>> get__CapabilityPascal__(String id) {
+        return webClient.get()
+            .uri("__external_base__/" + id)
+            .retrieve()
+            .bodyToMono(Map.class)
+            .map(m -> (Map<String, Object>) m)
+            .doOnError(e -> log.warn("__capabilityCamel__/get failed id={}", id, e));
+    }
+
+    @Override
+    public Mono<Map<String, Object>> create__CapabilityPascal__(Map<String, Object> req) {
+        return webClient.post()
+            .uri("__external_base__")
+            .bodyValue(req)
+            .retrieve()
+            .bodyToMono(Map.class)
+            .map(m -> (Map<String, Object>) m);
+    }
+
+    @Override
+    public Mono<Void> delete__CapabilityPascal__(String id) {
+        return webClient.delete()
+            .uri("__external_base__/" + id)
+            .retrieve()
+            .bodyToMono(Void.class);
+    }
+}

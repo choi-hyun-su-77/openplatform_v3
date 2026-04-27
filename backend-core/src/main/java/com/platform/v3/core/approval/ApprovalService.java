@@ -4,10 +4,12 @@ import com.platform.v3.core.approval.mapper.ApprovalMapper;
 import com.platform.v3.core.common.BusinessException;
 import com.platform.v3.core.common.DataSetSupport;
 import com.platform.v3.core.dataset.DataSetServiceMapping;
+import com.platform.v3.core.leave.LeaveService;
 import com.platform.v3.core.notification.NotificationService;
 import com.platform.v3.core.org.mapper.OrgMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -27,6 +29,17 @@ public class ApprovalService {
     private final ApprovalMapper approvalMapper;
     private final NotificationService notificationService;
     private final OrgMapper orgMapper;
+
+    /**
+     * LeaveService 는 setter 주입(Autowired required=false) — 순환 의존을 피하고
+     * 트랙 1 빌드 시점에 LeaveService 가 컨텍스트에 없을 때도 Approval 도메인이 그대로 동작하도록.
+     */
+    private LeaveService leaveService;
+
+    @Autowired(required = false)
+    public void setLeaveService(LeaveService leaveService) {
+        this.leaveService = leaveService;
+    }
 
     public ApprovalService(ApprovalMapper approvalMapper, NotificationService notificationService, OrgMapper orgMapper) {
         this.approvalMapper = approvalMapper;
@@ -105,6 +118,33 @@ public class ApprovalService {
             }
         }
 
+        // ============================================================
+        // form_code='LEAVE' 자동 연동 (Phase 14 트랙 1)
+        // → at_leave_request INSERT.  실패해도 결재 자체는 유지 (warn 로그만).
+        // ============================================================
+        if (leaveService != null && "LEAVE".equals(formCode)) {
+            try {
+                String leaveType = DataSetSupport.toStr(row.get("leaveType"));
+                String fromDate  = DataSetSupport.toStr(row.get("fromDate"));
+                String toDate    = DataSetSupport.toStr(row.get("toDate"));
+                Object daysObj   = row.get("days");
+                Double days = null;
+                if (daysObj != null) {
+                    if (daysObj instanceof Number n) days = n.doubleValue();
+                    else { try { days = Double.parseDouble(daysObj.toString()); } catch (Exception ignore) {} }
+                }
+                String reason = DataSetSupport.toStr(row.get("reason"));
+                if (leaveType != null && fromDate != null && toDate != null) {
+                    leaveService.applyFromDoc(docId, currentUser, leaveType,
+                            fromDate, toDate, days, reason);
+                } else {
+                    log.warn("LEAVE 양식이지만 leaveType/fromDate/toDate 누락 — at_leave_request INSERT 생략 docId={}", docId);
+                }
+            } catch (Exception e) {
+                log.warn("LEAVE applyFromDoc 실패 (결재는 유지): docId={}, err={}", docId, e.getMessage());
+            }
+        }
+
         log.info("결재 상신 완료: docId={}, approvers={}", docId, approvers.size());
         return Map.of("docId", docId, "approvers", approvers.size());
     }
@@ -132,6 +172,14 @@ public class ApprovalService {
                     "결재 승인 — " + doc.get("docTitle"),
                     "전결 완료되었습니다"
             );
+            // form_code='LEAVE' 면 잔여 차감 + at_attendance 갱신 (Phase 14 트랙 1)
+            if (leaveService != null && doc != null && "LEAVE".equals(String.valueOf(doc.get("formCode")))) {
+                try {
+                    leaveService.onDocApproved(docId);
+                } catch (Exception e) {
+                    log.warn("LEAVE onDocApproved 실패 docId={}: {}", docId, e.getMessage());
+                }
+            }
         } else {
             approvalMapper.updateDocumentStatus(docId, "IN_PROGRESS");
             // 다음 단계 결재자에게 알림

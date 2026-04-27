@@ -1,0 +1,148 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.platform.v3.core.room.mapper.RoomMapper">
+
+    <!-- ============================================================ -->
+    <!-- 회의실 마스터                                                   -->
+    <!-- ============================================================ -->
+
+    <select id="selectRooms" resultType="map">
+        SELECT room_id, room_name, capacity, location,
+               has_video, has_phone, amenities, active, created_at
+        FROM platform_v3.rm_room
+        WHERE active = TRUE
+        <if test="keyword != null and keyword != ''">
+            AND (room_name ILIKE '%' || #{keyword} || '%'
+                 OR location ILIKE '%' || #{keyword} || '%')
+        </if>
+        <if test="minCapacity != null">
+            AND capacity &gt;= #{minCapacity}
+        </if>
+        <if test="hasVideo != null">
+            AND has_video = #{hasVideo}
+        </if>
+        ORDER BY capacity DESC, room_name
+    </select>
+
+    <select id="selectRoomById" resultType="map">
+        SELECT room_id, room_name, capacity, location,
+               has_video, has_phone, amenities, active, created_at
+        FROM platform_v3.rm_room
+        WHERE room_id = #{roomId}
+    </select>
+
+    <!--
+        from~to 시간대에 충돌이 없는(BOOKED 예약이 겹치지 않는) 활성 회의실 반환.
+        NOT EXISTS 로 예약 충돌이 없는 회의실만 select.
+    -->
+    <select id="selectAvailableRooms" resultType="map">
+        SELECT r.room_id, r.room_name, r.capacity, r.location,
+               r.has_video, r.has_phone, r.amenities
+        FROM platform_v3.rm_room r
+        WHERE r.active = TRUE
+        <if test="minCapacity != null">
+            AND r.capacity &gt;= #{minCapacity}
+        </if>
+        <if test="hasVideo != null">
+            AND r.has_video = #{hasVideo}
+        </if>
+        AND NOT EXISTS (
+            SELECT 1 FROM platform_v3.rm_booking b
+            WHERE b.room_id = r.room_id
+              AND b.status = 'BOOKED'
+              AND b.start_at &lt; #{to}::timestamptz
+              AND b.end_at   &gt; #{from}::timestamptz
+        )
+        ORDER BY r.capacity, r.room_name
+    </select>
+
+    <!-- ============================================================ -->
+    <!-- 예약                                                           -->
+    <!-- ============================================================ -->
+
+    <select id="selectBookings" resultType="map">
+        SELECT b.booking_id, b.room_id, r.room_name, b.booker_no,
+               b.title, b.start_at, b.end_at, b.attendees,
+               b.livekit_room, b.status, b.created_at
+        FROM platform_v3.rm_booking b
+        JOIN platform_v3.rm_room r ON r.room_id = b.room_id
+        WHERE b.status = 'BOOKED'
+        <if test="roomId != null">AND b.room_id = #{roomId}</if>
+        <if test="from != null and from != ''">
+            AND b.end_at &gt; #{from}::timestamptz
+        </if>
+        <if test="to != null and to != ''">
+            AND b.start_at &lt; #{to}::timestamptz
+        </if>
+        ORDER BY b.start_at
+    </select>
+
+    <select id="selectMyBookings" resultType="map">
+        SELECT b.booking_id, b.room_id, r.room_name, b.booker_no,
+               b.title, b.start_at, b.end_at, b.attendees,
+               b.livekit_room, b.status, b.created_at
+        FROM platform_v3.rm_booking b
+        JOIN platform_v3.rm_room r ON r.room_id = b.room_id
+        WHERE b.booker_no = #{bookerNo}
+        <choose>
+            <when test="scope == 'PAST'">
+                AND b.end_at &lt; NOW()
+            </when>
+            <otherwise>
+                AND b.end_at &gt;= NOW()
+                AND b.status = 'BOOKED'
+            </otherwise>
+        </choose>
+        ORDER BY b.start_at
+            <if test="scope == 'PAST'">DESC</if>
+    </select>
+
+    <select id="selectBookingById" resultType="map">
+        SELECT b.booking_id, b.room_id, r.room_name, b.booker_no,
+               b.title, b.start_at, b.end_at, b.attendees,
+               b.livekit_room, b.status, b.created_at
+        FROM platform_v3.rm_booking b
+        JOIN platform_v3.rm_room r ON r.room_id = b.room_id
+        WHERE b.booking_id = #{bookingId}
+    </select>
+
+    <!--
+        충돌 검증 — overlap : start_at < to AND end_at > from
+        BOOKED 상태만 카운트 (CANCELLED 는 무시).
+    -->
+    <select id="countConflicts" resultType="int">
+        SELECT COUNT(*) FROM platform_v3.rm_booking
+        WHERE room_id = #{roomId}
+          AND status = 'BOOKED'
+          AND start_at &lt; #{to}::timestamptz
+          AND end_at   &gt; #{from}::timestamptz
+        <if test="excludeBookingId != null">
+            AND booking_id &lt;&gt; #{excludeBookingId}
+        </if>
+    </select>
+
+    <insert id="insertBooking" parameterType="map" useGeneratedKeys="true"
+            keyProperty="bookingId" keyColumn="booking_id">
+        INSERT INTO platform_v3.rm_booking
+            (room_id, booker_no, title, start_at, end_at,
+             attendees, livekit_room, status, created_at)
+        VALUES
+            (#{roomId}, #{bookerNo}, #{title},
+             #{startAt}::timestamptz, #{endAt}::timestamptz,
+             #{attendees}, #{livekitRoom},
+             COALESCE(#{status}, 'BOOKED'), NOW())
+    </insert>
+
+    <update id="updateBookingStatus">
+        UPDATE platform_v3.rm_booking
+        SET status = #{status}
+        WHERE booking_id = #{bookingId}
+    </update>
+
+    <update id="updateLivekitRoom">
+        UPDATE platform_v3.rm_booking
+        SET livekit_room = #{livekitRoom}
+        WHERE booking_id = #{bookingId}
+    </update>
+</mapper>

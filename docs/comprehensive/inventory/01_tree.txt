@@ -1,0 +1,134 @@
+openplatform_v3 — Project Tree (Depth 4, excluding node_modules/target/dist/.git/.gradle/.idea)
+
+openplatform_v3/
+├── .claude/
+│   ├── scheduled_tasks.lock
+│   └── settings.local.json
+├── .github/
+│   └── workflows/
+│       └── ci.yml
+├── backend-bff/
+│   ├── src/main/java/com/platform/v3/bff/
+│   │   ├── adapter/ (6 adapters: Keycloak, RocketChat, Stalwart, LiveKit, MinIO, WikiJS)
+│   │   ├── api/ (BffController)
+│   │   ├── config/ (SecurityConfig)
+│   │   ├── port/ (7 ports: Identity, Messaging, Mail, Wiki, Video, Storage, Notification)
+│   │   └── BffApplication.java
+│   ├── src/main/resources/
+│   │   └── application.yml (oauth2, keycloak, federation routes)
+│   ├── Dockerfile
+│   ├── pom.xml
+│   └── target/ (compiled)
+├── backend-core/
+│   ├── src/main/java/com/platform/v3/core/
+│   │   ├── admin/ (AdminService, AdminAuditAspect, AdminMapper)
+│   │   ├── approval/ (ApprovalService + Flowable delegates: ApprovalAssigneeResolver, ApprovalCompleteDelegate, ApprovalNotificationListener, ApprovalProcessStartListener, ApprovalMapper)
+│   │   ├── attendance/ (AttendanceService, AttendanceMapper)
+│   │   ├── board/ (BoardService, BoardMapper)
+│   │   ├── calendar/ (CalendarService, CalendarMapper)
+│   │   ├── code/ (CodeController, CodeService, CodeMapper)
+│   │   ├── common/ (ApiResponse, BffClient, BusinessException, DataSetSupport, GlobalExceptionHandler)
+│   │   ├── config/ (MinioConfig, MyBatisConfig, SecurityConfig, SseTokenFilter)
+│   │   ├── datalib/ (DataLibraryService, DataLibraryMapper)
+│   │   ├── dataset/ (DataSetController, DataSetService, DataSetServiceMapping, ServiceRegistry)
+│   │   ├── i18n/ (I18nController, I18nService, I18nMapper)
+│   │   ├── leave/ (LeaveService, LeaveMapper)
+│   │   ├── menu/ (MenuService, MenuMapper)
+│   │   ├── notification/ (NotificationController, NotificationService, NotificationMapper)
+│   │   ├── org/ (OrgService, OrgMapper)
+│   │   ├── room/ (RoomService, RoomMapper)
+│   │   ├── ux/ (FavoriteService, NotifyPrefService, SearchService, UxMapper)
+│   │   ├── widget/ (WidgetService, WidgetMapper)
+│   │   ├── worklog/ (WorkReportService, WorkReportMapper)
+│   │   └── Application.java
+│   ├── src/main/resources/
+│   │   ├── application.yml (db, redis, flyway, flowable, minio, bff)
+│   │   ├── db/migration/ (V1~V17 Flyway scripts)
+│   │   ├── mapper/ (MyBatis XML mappers)
+│   │   ├── processes/ (Flowable BPMN process definitions)
+│   │   └── dmn/ (Flowable DMN decision definitions)
+│   ├── Dockerfile
+│   ├── pom.xml
+│   └── target/ (compiled)
+├── ui/
+│   ├── src/
+│   │   ├── pages/ (24 Vue pages: Dashboard, Approval, Board, Calendar, Org, Messenger, Mail, Wiki, Video, Attendance, Leave, Room, DataLibrary, WorkLog, Search, NotifySettings, Favorites, Admin/Users/Depts/Menus/Codes/Audit, Login, 403)
+│   │   ├── components/
+│   │   │   ├── approval/ (5 approval components)
+│   │   │   ├── attendance/ (MonthlyCalendar)
+│   │   │   ├── board/ (3 board components)
+│   │   │   ├── calendar/ (CalendarEventDialog)
+│   │   │   ├── common/ (8 common components: ActionSpeedDial, ContextSpeedDial, CrudToolbar, FileUploadPanel, LoadingSkeleton, NotificationBell, PopupHost, SearchPanel)
+│   │   │   ├── dashboard/widgets/ (8 dashboard widgets)
+│   │   │   ├── datalib/ (FolderActions)
+│   │   │   ├── layout/ (8 layout components: FavoriteRail, LayoutDefault, LayoutHeader, LayoutSidebar, LayoutTabBar, LayoutTopNav, SearchBar, ThemeSettingsDrawer)
+│   │   │   ├── leave/ (LeaveBalanceCard)
+│   │   │   ├── mail/ (4 mail components)
+│   │   │   ├── org/ (EmployeeDetailDialog)
+│   │   │   ├── room/ (2 room components)
+│   │   │   └── worklog/ (DailyEditor)
+│   │   ├── composables/ (23 composables: useAdmin, useApproval, useAttendance, useCodes, useCombo, useDataLibrary, useDataSet, useItemPermission, useLabel, useLeave, useLocale, useMessage, useNotificationSse, usePermission, usePopup, useQuickActions, useRoom, useStorage, useTheme, useTransaction, useUx, useWidget, useWorkLog)
+│   │   ├── store/ (3 Pinia stores: auth, notification, tab)
+│   │   ├── router/ (index.ts with 27+ routes)
+│   │   ├── api/ (interceptor.ts — Keycloak token + 401 refresh + 5xx retry)
+│   │   ├── styles/ (global.css)
+│   │   ├── App.vue
+│   │   ├── main.ts
+│   │   └── keycloak.ts
+│   ├── public/ (silent-check-sso.html)
+│   ├── Dockerfile
+│   ├── index.html
+│   ├── nginx.conf
+│   ├── package.json (Vue 3, PrimeVue 4, Vite 6, TypeScript 5.7, Keycloak-js, LiveKit-client)
+│   ├── tsconfig.json
+│   ├── tsconfig.node.json
+│   ├── vite.config.ts
+│   └── package-lock.json
+├── infra/
+│   ├── docker-compose.yml (main services: db, redis, keycloak, rocketchat, stalwart, livekit, minio, wikijs, backend-core, backend-bff, ui)
+│   ├── docker-compose.cron.yml (scheduled tasks)
+│   ├── docker-compose.healthcheck.yml (liveness/readiness probes)
+│   ├── docker-compose.observability.yml (prometheus, loki, grafana)
+│   ├── docker-compose.traefik.yml (reverse proxy routes)
+│   ├── docker-compose.resources.yml (resource limits)
+│   ├── keycloak/ (openplatform-v3-realm.json — realm export)
+│   ├── grafana/ (provisioning datasources)
+│   ├── prometheus/ (prometheus.yml — metrics scraping)
+│   ├── loki/ (loki-config.yml, promtail-config.yml)
+│   ├── traefik/ (dynamic.yml, traefik.yml)
+│   ├── ldap/ (users.ldif — test users)
+│   ├── init-sql/ (01-schema.sql)
+│   ├── seed/ (expand_test_data.sql + 6 test files)
+│   ├── livekit.yaml (video server config)
+│   ├── stalwart-config.toml (mail server config)
+│   └── wiki-keycloak-config.json (Wiki.js SSO config)
+├── scripts/
+│   ├── start.sh
+│   ├── backup.sh
+│   ├── restore.sh
+│   ├── perf-scan.sh
+│   └── security-scan.sh
+├── docs/
+│   ├── comprehensive/
+│   │   ├── inventory/ (this directory)
+│   │   ├── assets/existing/
+│   │   ├── build/
+│   │   ├── chapters/
+│   │   └── info.md, fatal.md, TODO.md, warn.md
+│   ├── dev-manual/
+│   │   ├── inventory/ (00_existing_artifacts.md)
+│   │   ├── menu/, recipes/, scaffolds/, screens/, templates/
+│   └── api-catalog.md, scenarios.md, port-allocation.md
+├── doc/ (access-info.html, conversation.html, PDFs)
+├── .gitignore
+├── CLAUDE.md
+├── README.md
+├── SESSION_HANDOFF.md
+├── TODO.md
+├── developer_manual_codebase_driven_prompt.md
+├── framework_documentation_prompt.md
+├── docker-compose.yml (root root level)
+├── start.sh / stop.sh
+├── server-info.txt
+├── fatal.md, info.md
+└── [multiple PNG screenshots of UI phases]

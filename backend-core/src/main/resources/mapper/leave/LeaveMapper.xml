@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.platform.v3.core.leave.mapper.LeaveMapper">
+
+    <select id="selectBalance" resultType="map">
+        SELECT balance_id, employee_no, year,
+               total_days, used_days, carry_over, remaining, updated_at
+        FROM platform_v3.at_leave_balance
+        WHERE employee_no = #{employeeNo}
+          AND year        = #{year}
+    </select>
+
+    <insert id="insertBalance" parameterType="map" useGeneratedKeys="true"
+            keyProperty="balanceId" keyColumn="balance_id">
+        INSERT INTO platform_v3.at_leave_balance
+            (employee_no, year, total_days, used_days, carry_over, updated_at)
+        VALUES
+            (#{employeeNo}, #{year}, #{totalDays},
+             COALESCE(#{usedDays}, 0), COALESCE(#{carryOver}, 0), NOW())
+    </insert>
+
+    <update id="addUsedDays">
+        UPDATE platform_v3.at_leave_balance
+           SET used_days  = used_days + #{addDays},
+               updated_at = NOW()
+         WHERE employee_no = #{employeeNo}
+           AND year        = #{year}
+    </update>
+
+    <select id="selectMyHistory" resultType="map">
+        SELECT r.request_id, r.doc_id, r.employee_no,
+               r.leave_type, r.from_date, r.to_date, r.days,
+               r.reason, r.status, r.created_at,
+               d.doc_title, d.status AS doc_status
+        FROM platform_v3.at_leave_request r
+        LEFT JOIN platform_v3.ap_document d ON d.doc_id = r.doc_id
+        WHERE r.employee_no = #{employeeNo}
+          AND EXTRACT(YEAR FROM r.from_date) = #{year}
+        ORDER BY r.from_date DESC
+    </select>
+
+    <select id="selectRequestByDoc" resultType="map">
+        SELECT request_id, doc_id, employee_no,
+               leave_type, from_date, to_date, days,
+               reason, status, created_at
+        FROM platform_v3.at_leave_request
+        WHERE doc_id = #{docId}
+        ORDER BY request_id DESC
+        LIMIT 1
+    </select>
+
+    <insert id="insertRequest" parameterType="map" useGeneratedKeys="true"
+            keyProperty="requestId" keyColumn="request_id">
+        INSERT INTO platform_v3.at_leave_request
+            (doc_id, employee_no, leave_type, from_date, to_date, days, reason, status, created_at)
+        VALUES
+            (#{docId}, #{employeeNo}, #{leaveType},
+             CAST(#{fromDate} AS DATE), CAST(#{toDate} AS DATE),
+             #{days}, #{reason},
+             COALESCE(#{status}, 'PENDING'), NOW())
+    </insert>
+
+    <update id="updateRequestStatus">
+        UPDATE platform_v3.at_leave_request
+           SET status = #{status}
+         WHERE request_id = #{requestId}
+    </update>
+
+    <select id="selectTeamCalendar" resultType="map">
+        SELECT r.request_id, r.employee_no, r.leave_type,
+               r.from_date, r.to_date, r.days, r.status,
+               e.employee_name, e.dept_id
+        FROM platform_v3.at_leave_request r
+        INNER JOIN platform_v3.org_employee e ON e.employee_no = r.employee_no
+        WHERE r.status = 'APPROVED'
+          AND e.dept_id = #{deptId}
+          AND r.from_date &lt;= CAST(#{to} AS DATE)
+          AND r.to_date   &gt;= CAST(#{from} AS DATE)
+        ORDER BY r.from_date
+    </select>
+
+    <select id="selectHolidaysBetween" resultType="string">
+        SELECT TO_CHAR(holiday_date, 'YYYY-MM-DD')
+        FROM platform_v3.cm_holiday
+        WHERE holiday_date BETWEEN CAST(#{from} AS DATE) AND CAST(#{to} AS DATE)
+        ORDER BY holiday_date
+    </select>
+
+</mapper>

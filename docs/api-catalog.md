@@ -44,6 +44,46 @@ BFF 계층은 v3 신규 설계.
 
 ### notification (알림)
 - `notification/searchList`, `notification/markRead`, `notification/markAllRead`
+- `notification/getBadgeCount` (Phase 13)
+
+### attendance (Phase 14 트랙 1 — 근태)
+- `attendance/checkIn`, `attendance/checkOut`
+- `attendance/searchToday`, `attendance/searchMyMonth`, `attendance/searchTeamDaily`
+
+### leave (Phase 14 트랙 1 — 연차/휴가)
+- `leave/searchBalance`, `leave/searchMyHistory`, `leave/searchTeamCalendar`
+- `leave/applyFromDoc` (결재 LEAVE 양식 상신 시 자동 호출), `leave/onDocApproved` (Flowable listener)
+
+### room (Phase 14 트랙 2 — 회의실 예약)
+- `room/searchRooms`, `room/searchAvailable`
+- `room/searchBookings`, `room/searchMyBookings`, `room/checkConflict`
+- `room/reserve` (충돌검사 + LiveKit 룸 자동 + 알림 + 캘린더)
+- `room/cancel`
+
+### datalib (Phase 14 트랙 3 — 자료실)
+- `datalib/listFolders`, `datalib/listFiles`, `datalib/searchFiles`
+- `datalib/createFolder`, `datalib/renameFolder`, `datalib/deleteFolder`
+- `datalib/uploadMeta`, `datalib/getDownloadUrl`, `datalib/deleteFile`, `datalib/moveFile`
+
+### worklog (Phase 14 트랙 4 — 업무일지)
+- `worklog/saveDaily` (PostgreSQL upsert)
+- `worklog/searchMyWeek`, `worklog/searchTeamDaily`, `worklog/searchTeamWeekly`, `worklog/searchMonth`
+
+### admin (Phase 14 트랙 5 — 관리자, ROLE_ADMIN 한정 + AOP 자동 sa_audit)
+- `admin/userList`, `admin/userSave`, `admin/userToggleActive`, `admin/userResetPwd`
+- `admin/deptTree`, `admin/deptSave`
+- `admin/menuList`, `admin/menuSave`, `admin/menuDelete`, `admin/permSave`
+- `admin/codeGroupList`, `admin/codeList`, `admin/codeSave`, `admin/codeDelete`
+- `admin/auditSearch`
+
+### ux (Phase 14 트랙 6 — 통합검색/즐겨찾기/알림설정)
+- `ux/search` (4 도메인 UNION: posts/docs/employees/files)
+- `ux/listFavorites`, `ux/addFavorite`, `ux/removeFavorite`, `ux/reorder`
+- `ux/getNotifyPref`, `ux/saveNotifyPref` (PORTAL/EMAIL/MESSENGER 채널 매트릭스)
+
+### widget (Phase 14 트랙 7 — 대시보드 위젯)
+- `widget/listAll`, `widget/listMine` (default 6 server-side 자동 시드)
+- `widget/saveLayout`, `widget/addWidget`, `widget/removeWidget`
 
 ## BFF REST (backend-bff, 포트 19091) — v3 신규 설계
 | Path | 포트 | 설명 |
@@ -58,6 +98,9 @@ BFF 계층은 v3 신규 설계.
 | `/api/bff/wiki/pages` | WikiPort | 페이지 목록/검색 |
 | `/api/bff/wiki/page` | WikiPort | 단건 조회/저장 |
 | `/api/bff/video/room` | VideoPort | 룸 생성 |
+| `/api/bff/identity/users` (POST/PUT) | IdentityPort | Phase 14 — Keycloak 사용자 생성/수정 (ROLE_ADMIN) |
+| `/api/bff/identity/users/{id}/active` | IdentityPort | Phase 14 — 활성 토글 |
+| `/api/bff/identity/users/{id}/reset-password` | IdentityPort | Phase 14 — 임시 비번 발급 |
 | `/api/bff/video/token` | VideoPort | JWT 발급 |
 | `/api/bff/storage/upload` | StoragePort | 업로드 |
 | `/api/bff/storage/presigned` | StoragePort | presigned URL |

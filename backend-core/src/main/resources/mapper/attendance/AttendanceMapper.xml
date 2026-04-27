@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.platform.v3.core.attendance.mapper.AttendanceMapper">
+
+    <select id="selectToday" resultType="map">
+        SELECT attendance_id, employee_no, work_date,
+               check_in_at, check_out_at, work_minutes, status, note
+        FROM platform_v3.at_attendance
+        WHERE employee_no = #{employeeNo}
+          AND work_date   = CAST(#{workDate} AS DATE)
+    </select>
+
+    <insert id="insertCheckIn" parameterType="map" useGeneratedKeys="true"
+            keyProperty="attendanceId" keyColumn="attendance_id">
+        INSERT INTO platform_v3.at_attendance
+            (employee_no, work_date, check_in_at, status, created_at, updated_at)
+        VALUES
+            (#{employeeNo}, CAST(#{workDate} AS DATE), NOW(),
+             COALESCE(#{status}, 'NORMAL'), NOW(), NOW())
+    </insert>
+
+    <update id="updateCheckIn">
+        UPDATE platform_v3.at_attendance
+           SET check_in_at = NOW(),
+               updated_at  = NOW()
+         WHERE attendance_id = #{attendanceId}
+           AND check_in_at IS NULL
+    </update>
+
+    <update id="updateCheckOut">
+        UPDATE platform_v3.at_attendance
+           SET check_out_at = NOW(),
+               work_minutes = #{workMinutes},
+               updated_at   = NOW()
+         WHERE attendance_id = #{attendanceId}
+    </update>
+
+    <select id="selectMyMonth" resultType="map">
+        SELECT attendance_id, employee_no, work_date,
+               check_in_at, check_out_at, work_minutes, status, note
+        FROM platform_v3.at_attendance
+        WHERE employee_no = #{employeeNo}
+          AND TO_CHAR(work_date, 'YYYY-MM') = #{yearMonth}
+        ORDER BY work_date
+    </select>
+
+    <select id="selectTeamDaily" resultType="map">
+        SELECT a.attendance_id, a.employee_no, a.work_date,
+               a.check_in_at, a.check_out_at, a.work_minutes, a.status, a.note,
+               e.employee_name, e.dept_id
+        FROM platform_v3.org_employee e
+        LEFT JOIN platform_v3.at_attendance a
+               ON a.employee_no = e.employee_no
+              AND a.work_date   = CAST(#{workDate} AS DATE)
+        WHERE e.dept_id = #{deptId}
+          AND e.status  = 'ACTIVE'
+        ORDER BY e.employee_name
+    </select>
+
+    <!-- 휴가 승인 시 해당일 status='LEAVE' 갱신 / 없으면 INSERT -->
+    <insert id="upsertLeaveDay">
+        INSERT INTO platform_v3.at_attendance
+            (employee_no, work_date, status, created_at, updated_at)
+        VALUES
+            (#{employeeNo}, CAST(#{workDate} AS DATE), 'LEAVE', NOW(), NOW())
+        ON CONFLICT (employee_no, work_date)
+        DO UPDATE SET status = 'LEAVE', updated_at = NOW()
+    </insert>
+
+</mapper>

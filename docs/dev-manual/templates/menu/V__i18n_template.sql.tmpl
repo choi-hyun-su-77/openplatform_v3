@@ -1,0 +1,10 @@
+-- V{N}__i18n___domain-kebab__.sql
+-- 메뉴 등록 8단계 중 Step 7 (i18n 라벨, 선택)
+
+INSERT INTO platform_v3.cm_i18n_message (msg_key, locale, msg_type, message)
+VALUES
+  ('MENU___DOMAIN_UPPER__','ko','MENU','__domainKorean__'),
+  ('MENU___DOMAIN_UPPER__','en','MENU','__domainEnglish__'),
+  ('MENU___DOMAIN_UPPER__','zh','MENU','__domainChinese__'),
+  ('MENU___DOMAIN_UPPER__','ja','MENU','__domainJapanese__')
+ON CONFLICT DO NOTHING;

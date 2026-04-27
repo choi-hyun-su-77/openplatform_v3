@@ -46,3 +46,31 @@ SSE 실시간 뱃지 → 드롭다운 목록 → 개별 읽음/전체 읽음.
 
 ## 15. 권한 제어
 `usePermission(menuId)` 로 버튼/항목 표시 제어. 서버 사이드 재검증 (backend-core).
+
+---
+
+## Phase 14 — 실무 그룹웨어 시나리오 (16~23)
+
+## 16. 출퇴근 + 연차 자동 차감 (트랙 1)
+대시보드 출근 위젯 → "출근" 버튼 → at_attendance INSERT. 휴가는 LEAVE 양식으로 결재 → 승인 시 잔여연차 자동 차감 + at_attendance 의 해당일 status='LEAVE' 갱신. 영업일 계산은 cm_holiday + 주말 제외.
+
+## 17. 회의실 예약 + 화상회의 자동 (트랙 2)
+/room → 좌측 회의실 목록 + 우측 FullCalendar 빈 슬롯 클릭 → BookingDialog. 충돌검증 통과 시 rm_booking INSERT, has_video 면 LiveKit 룸(`rm-{bookingId}`) 자동 생성, 참석자 each notifyByUserNo, 본인 캘린더 자동 등록.
+
+## 18. 자료실 폴더 + 권한 (트랙 3)
+/datalib → 좌측 폴더 트리 (COMPANY/DEPT/PERSONAL) + 우측 파일 DataTable. scope 별 RWUD 권한. 부서 폴더는 본인 부서만 RW, 외부 R 차단. presigned URL 다운로드 + count++.
+
+## 19. 일별 업무일지 + 부서장 팀 뷰 (트랙 4)
+/worklog → 좌측 미니 캘린더 + 우측 DailyEditor. ON CONFLICT upsert. 부서장 토글 시 팀 뷰 (행=직원, 열=월~금). 3단 가드 (JWT MGR / dept_head / position_level≤30).
+
+## 20. 관리자 GUI — 사용자/조직/메뉴/코드 (트랙 5)
+/admin/users → 추가 다이얼로그 → 이름/사번/이메일/부서/역할 → 저장. backend-core → BFF Keycloak Admin REST 호출 (admin-cli password grant) → KC 사용자 생성 + temp123! 임시 비번. AdminAuditAspect 가 자동으로 sa_audit INSERT.
+
+## 21. 통합 검색 (트랙 6)
+헤더 SearchBar 에 키워드 입력 → 4 도메인(POST/DOC/EMP/FILE) UNION 결과 Overlay. Enter 시 /search 풀 페이지. 즐겨찾기 ★ 토글 → 헤더 FavoriteRail 에 추가. 알림 채널은 /settings/notify 카테고리×채널 매트릭스로 사용자 제어 (PORTAL/EMAIL/MESSENGER).
+
+## 22. 대시보드 위젯 커스터마이즈 (트랙 7)
+/dashboard 첫 로그인 시 default 6 위젯 자동 시드. 우상단 "편집" 토글 → 화살표(← → ↑ ↓ W± H±)로 12-column 그리드 위치/크기 조정 + 위젯 추가/제거. 저장 시 일괄 saveLayout. 9개 위젯 카탈로그 (출퇴근/잔여/미결/일정/공지/메신저/내회의/팀일지/연차차트).
+
+## 23. 휴가 결재 → 캘린더 / 회의실 예약 자동 표시 (트랙 8 통합)
+LEAVE 결재 승인 시 trigger 가 캘린더 events 응답에 'L-{requestId}' readonly 이벤트 자동 추가 (초록). 회의실 예약은 'R-{bookingId}' readonly 이벤트 (주황). 사용자는 추가 작업 없이 통합된 캘린더 뷰에서 모든 일정 확인.

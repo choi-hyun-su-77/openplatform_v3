@@ -1,0 +1,13 @@
+package com.platform.v3.bff.port;
+
+import reactor.core.publisher.Mono;
+import java.util.Map;
+
+public interface __CapabilityPascal__Port {
+
+    Mono<Map<String, Object>> get__CapabilityPascal__(String id);
+
+    Mono<Map<String, Object>> create__CapabilityPascal__(Map<String, Object> req);
+
+    Mono<Void> delete__CapabilityPascal__(String id);
+}

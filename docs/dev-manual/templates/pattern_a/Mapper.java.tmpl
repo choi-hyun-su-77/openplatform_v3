@@ -1,0 +1,20 @@
+package com.platform.v3.core.__domain-kebab__.mapper;
+
+import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Param;
+import java.util.List;
+import java.util.Map;
+
+@Mapper
+public interface __DomainPascal__Mapper {
+
+    List<Map<String, Object>> selectList(@Param("keyword") String keyword);
+
+    Map<String, Object> selectDetail(@Param("id") String id);
+
+    int insert__DomainPascal__(Map<String, Object> row);
+
+    int update__DomainPascal__(Map<String, Object> row);
+
+    int delete__DomainPascal__(@Param("id") String id);
+}

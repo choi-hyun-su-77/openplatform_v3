@@ -1,0 +1,121 @@
+﻿================================================================================
+  openplatform v3 — 서버 접속 정보
+  Last updated: 2026-04-27 (Phase 14 완료 시점)
+================================================================================
+
+[기동 / 중지]
+  ./start.sh              — 전체 스택 기동
+  ./stop.sh               — 컨테이너 중지 (데이터 보존)
+  ./stop.sh --remove      — 컨테이너 + 볼륨 완전 제거 (DB 초기화)
+
+================================================================================
+  메인 접속
+================================================================================
+  포탈 UI (운영 빌드)     http://localhost:19173/
+  포탈 UI (개발 모드)     http://localhost:25174/    (npm run dev 시)
+
+  기본 계정 (Keycloak realm: openplatform-v3)
+    admin / admin             — 관리자 (ROLE_ADMIN, employee_no=E0001)
+    user1 / user1             — 일반 사용자
+    user2 / user2             — 일반 사용자
+    user3 / user3             — 일반 사용자
+
+================================================================================
+  백엔드 API
+================================================================================
+  backend-core (DataSet)   http://localhost:19090
+    Health                 http://localhost:19090/actuator/health
+    Swagger                http://localhost:19090/swagger-ui.html
+
+  backend-bff (Port-Adapter) http://localhost:19091
+    Health                 http://localhost:19091/actuator/health
+    Swagger                http://localhost:19091/swagger-ui.html
+
+================================================================================
+  Keycloak (SSO IdP)
+================================================================================
+  Admin Console            http://localhost:19281/admin
+    admin / admin
+  OIDC Discovery           http://localhost:19281/realms/openplatform-v3/.well-known/openid-configuration
+  단일 호스트 별칭          http://kc.localtest.me:19281/  (모든 서비스 공통)
+
+================================================================================
+  외부 통합 서비스 (5종 SSO)
+================================================================================
+  Rocket.Chat (메신저)     http://localhost:19065
+    SSO 자동 로그인          포탈에서 "메신저" 메뉴 클릭
+    로컬 관리 계정          v3admin / Admin1234!  (Custom OAuth 외 직접 로그인용)
+
+  Wiki.js (위키)           http://localhost:19001
+    SSO 자동 로그인          포탈에서 "위키" 메뉴 클릭
+    Admin                  admin@v3.local / admin (또는 SSO)
+
+  Stalwart (웹메일)        http://localhost:19480/  (Management UI)
+    Management 계정         admin / admin
+    JMAP API                http://localhost:19480/.well-known/jmap
+    SMTP                    localhost:19025
+    IMAP                    localhost:19143
+    포탈 메일 페이지         포탈에서 "메일" 메뉴 클릭 (JMAP 프록시 3단 UI)
+
+  MinIO (스토리지)         http://localhost:19901   (Console)
+    SSO 로그인              "Use OIDC" 버튼 → Keycloak
+    로컬 관리 계정          v3minio / v3minio_pass    (Access/Secret Key)
+    S3 API 엔드포인트        http://localhost:19900
+    기본 버킷               platform-v3, datalib, board-files, approval-attachments
+
+  LiveKit (화상회의)       WebSocket: ws://localhost:19880
+    API Key                devkey
+    Secret                 devsecret_v3_changeme_32chars_minimum
+    포탈 화상회의 페이지     포탈에서 "화상회의" 메뉴 (BFF 토큰 발급 후 자동 입장)
+
+================================================================================
+  인프라 (직접 접속이 보통 불필요)
+================================================================================
+  PostgreSQL               localhost:19432
+    DB                     platform_v3 / flowable_v3 / wiki_v3 / keycloak_v3
+    User                   platform_v3 / platform_v3
+    psql 단축               docker exec -it v3-postgres psql -U platform_v3 -d platform_v3
+
+  Redis                    localhost:19379
+
+  OpenLDAP (Federation)    localhost:19389
+    BindDN                 cn=admin,dc=v3,dc=local
+    Password               admin
+
+  MongoDB (Rocket.Chat)     v3-mongo:27017       (외부 노출 없음)
+
+  Traefik (옵션)           http://localhost:8080  (compose 미포함)
+
+================================================================================
+  Phase 14 신규 메뉴 (admin 계정으로 접속)
+================================================================================
+  /attendance                 출퇴근 (출근/퇴근 버튼 + 월별 캘린더)
+  /leave                      연차/휴가 (잔여 + 신청 이력 + 휴가 결재 자동연동)
+  /worklog                    업무일지 (일/주간 + 부서장 팀 뷰)
+  /room                       회의실예약 (충돌검사 + LiveKit 자동)
+  /datalib                    자료실 (회사 공용/부서 폴더)
+  /search                     통합검색 (게시글·결재·사람·파일)
+  /settings/notify            알림 설정 (PORTAL/EMAIL/MESSENGER 채널)
+  /settings/favorites         즐겨찾기 관리
+  /admin/users                사용자 관리 (Keycloak + DB 동기)
+  /admin/depts                조직 관리
+  /admin/menus                메뉴 / 권한 매트릭스
+  /admin/codes                공통 코드
+  /admin/audit                감사 로그 (sa_audit)
+
+================================================================================
+  주요 데이터셋 도메인
+================================================================================
+  attendance/*  leave/*  room/*  datalib/*  worklog/*
+  admin/*       ux/*     widget/*
+  approval/*    board/*  calendar/*  notification/*  org/*  code/*  i18n/*
+
+  상세: docs/api-catalog.md, docs/scenarios.md, docs/PHASE14_REPORT.md
+
+================================================================================
+  운영 노트
+================================================================================
+  - 모든 기본 비밀번호는 운영 배포 전 반드시 교체
+  - kc.localtest.me 는 RFC public DNS (항상 127.0.0.1) — 단일 SSO 쿠키용
+  - directAccessGrantsEnabled=false (PKCE 만 허용) — E2E 테스트 시 임시 활성화 후 즉시 복구
+================================================================================

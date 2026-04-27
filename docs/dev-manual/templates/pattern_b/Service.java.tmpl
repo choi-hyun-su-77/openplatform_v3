@@ -1,0 +1,78 @@
+package com.platform.v3.core.__domain-kebab__;
+
+import com.platform.v3.core.common.dataset.DataSetServiceMapping;
+import com.platform.v3.core.__domain-kebab__.mapper.__DomainPascal__Mapper;
+import com.platform.v3.core.notification.NotificationService;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.flowable.engine.RuntimeService;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.*;
+
+@Slf4j
+@Service
+@RequiredArgsConstructor
+public class __DomainPascal__Service {
+
+    private final __DomainPascal__Mapper mapper;
+    private final RuntimeService runtimeService;
+    private final NotificationService notificationService;
+
+    @Transactional
+    @DataSetServiceMapping("__domain-kebab__/submitDocument")
+    public Map<String, Object> submitDocument(Map<String, Object> datasets, String currentUser) {
+        Map<?, ?> ds = (Map<?, ?>) datasets.get("ds_data");
+        String docId = UUID.randomUUID().toString().substring(0, 32);
+        log.info("__domain-kebab__/submit user={} docId={}", currentUser, docId);
+
+        // 1) 도메인 INSERT
+        Map<String, Object> doc = new HashMap<>(ds);
+        doc.put("docId", docId);
+        doc.put("createdBy", currentUser);
+        mapper.insertDocument(doc);
+
+        // 2) 결재선 결정 (DMN)
+        var approvers = mapper.selectApproversForDocFromDmn(docId);
+        for (int i = 0; i < approvers.size(); i++) {
+            mapper.insertApprovalLine(Map.of(
+                "docId", docId, "lineSeq", i + 1, "approverNo", approvers.get(i).get("approver_no")
+            ));
+        }
+
+        // 3) Flowable 프로세스 시작
+        runtimeService.startProcessInstanceByKey("__processKey__", docId, Map.of("docId", docId));
+
+        // 4) 첫 결재자 알림
+        if (!approvers.isEmpty()) {
+            notificationService.notifyByUserNo(
+                approvers.get(0).get("approver_no").toString(),
+                "결재 요청",
+                "신규 결재 문서가 도착했습니다."
+            );
+        }
+
+        return Map.of("docId", docId);
+    }
+
+    @Transactional
+    @DataSetServiceMapping("__domain-kebab__/approve")
+    public Map<String, Object> approve(Map<String, Object> datasets, String currentUser) {
+        verifyDocAccess(datasets, currentUser);
+        // ...
+        return Map.of("ok", true);
+    }
+
+    @Transactional
+    @DataSetServiceMapping("__domain-kebab__/reject")
+    public Map<String, Object> reject(Map<String, Object> datasets, String currentUser) {
+        verifyDocAccess(datasets, currentUser);
+        // ...
+        return Map.of("ok", true);
+    }
+
+    private void verifyDocAccess(Map<String, Object> datasets, String currentUser) {
+        // 문서 소유자 + 결재선 검증
+    }
+}

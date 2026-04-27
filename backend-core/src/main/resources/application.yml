@@ -68,6 +68,9 @@ minio:
   secret-key: ${MINIO_SECRET_KEY:v3minio_pass}
   bucket: ${MINIO_BUCKET:platform-v3}
 
+bff:
+  base-url: ${BFF_BASE_URL:http://backend-bff:19091}
+
 management:
   endpoints:
     web:

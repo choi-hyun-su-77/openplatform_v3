@@ -1,5 +1,38 @@
 # 판단 이력 (개발자 검토용)
 
+## [2026-04-27] T6 UX 강화(통합검색/즐겨찾기/알림설정) — 코드 작성 단독 수행
+- **결정**: V15 마이그레이션 (`ux_favorite`, `ux_notify_pref` 테이블 + 검증용 시드 — admin E0001 즐겨찾기 5건/알림 설정 18건). 백엔드 3 서비스(`SearchService` 1 service, `FavoriteService` 4 service, `NotifyPrefService` 2 service) + `UxMapper` 통합. 통합 검색은 50명 규모 ILIKE 4도메인 (POST/DOC/EMP/FILE) — Phase 14 §8.5 SQL 패턴 그대로 (LIMIT 10 each).
+- **NotificationService 호환 처리 (요점)**: `notifyByUserNo(...)` 기존 6 인자 시그니처는 절대 깨지 않고, 7번째 `category` 추가 오버로드 신설. 기존 호출(ApprovalService/BoardService/RoomService)는 무수정 — `category=null` 이면 PORTAL(SSE) 기존 동작 그대로. category 가 있을 때만 `NotifyPrefService.isChannelEnabled` 로 PORTAL/EMAIL/MESSENGER 분기. NotifyPrefService 와 BffClient 는 `@Autowired(required=false)` setter 로 주입 — 트랙 6 미통합 환경에서도 기존 도메인 정상 동작.
+- **RocketChat DM 메서드 부재 (자율 결정)**: `RocketChatAdapter` 에 `sendDm`/`sendDirectMessage` 가 없고, BFF 에 `/api/bff/messenger/dm` 엔드포인트가 없음 (Phase 10 stub 상태). MESSENGER 채널은 `enabled=true` 여도 BffClient 호출은 미구현 (`sendNotificationDm` debug 로그만), warn 로그 후 스킵 — 알림 자체는 PORTAL/EMAIL 로 전달되므로 손실 없음. 후속 트랙(또는 Phase 10 마무리) 에서 RocketChat REST `/api/v1/im.create` + `/api/v1/chat.postMessage` 호출 구체화 필요.
+- **EMAIL 채널 service-to-service 호출**: BFF `/api/bff/mail/send` 가 `JwtAuthenticationToken` 으로 보호됨 → backend-core 의 BffClient 는 인증 없이 호출하므로 401 가능성. 호출 실패 시 warn 로그만 남기고 PORTAL 은 정상 발송됨. 후속 보완 시 BFF 측에 service-account 인증 또는 internal-only 엔드포인트 추가 필요.
+- **UI 드래그 정렬 우회**: §8 "npm 패키지 추가 금지" 규칙 → vuedraggable/Sortable.js 미사용. PageFavorites 는 ▲▼ 버튼으로 한 칸씩 이동 후 `ux/reorder` 일괄 호출. PrimeVue OrderList 는 양방향 리스트가 필요해 본 페이지 모델과 어긋나 미채택.
+- **SearchBar / FavoriteRail LayoutHeader 마운트**: 트랙 8 책임 (지시문 §4 "절대 수정 금지" 준수) — 본 트랙은 컴포넌트 신규 작성과 `defineExpose({ reload })` 까지만 제공.
+- **추가 컬럼**: `ux_favorite.icon` (PrimeIcons 클래스) 추가 — FavoriteRail 에서 즉시 사용 (스펙 §8.2 의 5개 컬럼 + icon, 후방 호환).
+- **deferred (Docker 미실행)**: 라우터 등록(/search, /settings/notify, /settings/favorites, 트랙 8 일괄), 메뉴 INSERT (V17, 트랙 8), mvn package, Flyway clean boot, Playwright smoke 시나리오 1·2.
+- **수정/신규 파일**:
+  - 신규: `V15__ux_features.sql`, `core/ux/{SearchService,FavoriteService,NotifyPrefService}.java`, `core/ux/mapper/UxMapper.java`, `mapper/ux/UxMapper.xml`, `ui/src/composables/useUx.ts`, `ui/src/components/layout/{SearchBar,FavoriteRail}.vue`, `ui/src/pages/{PageSearch,PageNotifySettings,PageFavorites}.vue`
+  - 수정: `core/notification/NotificationService.java` (오버로드 추가, 기존 시그니처 보존), `core/common/BffClient.java` (sendNotificationEmail / sendNotificationDm 추가). 그 외 트랙 파일·router/index.ts·LayoutHeader.vue·v1·v2·vue-spring-fw 원본 미수정.
+
+## [2026-04-27] T1 근태·연차·휴가 — 코드 작성 단독 수행 (Docker 검증 deferred)
+- **결정**: V10 마이그레이션, AttendanceService(5)/LeaveService(5+applyFromDoc/onDocApproved DataSet), MyBatis Mapper, PageAttendance/PageLeave/MonthlyCalendar/LeaveBalanceCard, useAttendance/useLeave 작성. ApprovalService 의 form_code='LEAVE' 분기에서 LeaveService.applyFromDoc 자동 호출, ApprovalCompleteDelegate 에서 onDocApproved 호출. ApprovalService.approve 의 allApproved 분기에도 onDocApproved 호출 추가 (UI 직접 결재 즉시 반영).
+- **순환 의존 회피**: ApprovalService 의 LeaveService 주입을 setter 주입 (`@Autowired(required=false)`) 으로 처리 — 트랙 1 빌드 누락 시에도 결재 도메인 정상 동작.
+- **Donut 차트**: 외부 라이브러리 추가 금지 규칙 준수 — SVG `<circle>` 두 개 + `stroke-dasharray` 로 직접 구현.
+- **UI 영업일 계산**: 백엔드(LeaveService.calculateDays)는 cm_holiday 와 주말 모두 제외하지만, UI(ApprovalSubmitDialog.recalcDays)는 주말만 제외 (공휴일 fetch 비용 절감). 실제 차감 시 백엔드 정밀 계산이 권위. UI 수치는 사용자 사전 안내용.
+- **deferred (Docker 미실행)**: T1-10 라우트/메뉴 등록(트랙 8 통합 책임), T1-11 mvn package / Flyway clean boot / Playwright smoke, T1-12 api-catalog/scenarios 갱신.
+- **수정 파일**: ApprovalService.java(import+setter+submit/approve 분기), ApprovalCompleteDelegate.java(setter+execute 후처리), ApprovalSubmitDialog.vue(initialFormCode prop + LEAVE 필드 v-if 분기). 다른 트랙 파일·라우터·레이아웃·v1·v2·vue-spring-fw 원본 미수정.
+
+## [2026-04-27] T3 자료실 — backend-core 직접 MinIO presigned 발급 채택
+- **결정**: BFF WebClient 미존재로 backend-core 에 `MinioConfig` 빈 등록 → `DataLibraryService.getDownloadUrl` 이 직접 presigned GET 발급. 업로드 PUT 만 기존 BFF `/api/bff/storage/presigned` 패턴 유지.
+- **부서 폴더 자동 시드**: `INSERT INTO dl_folder ... SELECT FROM org_department WHERE dept_level=3` 로 leaf 9개 부서 폴더 자동 생성.
+- **트랙 8 합류 잔여**: 라우트/메뉴 등록, mvn 컴파일 검증.
+
+## [2026-04-27] Phase 14 Wave 1 spawn — Docker 미실행 상태에서 코드 우선 작성
+- **상황**: 사용자가 `docs/PHASE14_PRODUCTION_GROUPWARE.md 진행해` 지시. 환경 검증에서 Docker daemon 응답 없음.
+- **결정**: Mode B (병렬 4 에이전트) 진행. T1·T2·T3·T5 동시 spawn (run_in_background). 각 에이전트는 코드 작성만 수행하고 DoD 의 빌드/Flyway/Playwright 검증은 skip — Wave 3 (트랙 8) 에서 Docker 복구 후 일괄.
+- **공유 파일 충돌 회피**: 각 에이전트는 자기 트랙 파일만 작성. `ui/src/router/index.ts`, `LayoutSidebar.vue`, `App.vue` 등 공유 파일은 손대지 않음 — 트랙 8 에서 일괄 통합.
+- **DataSetService 등록**: 각 트랙은 자기 도메인 ServiceMapping 만 등록. ServiceRegistry 자동 스캔이 동작하므로 충돌 없음.
+- **Flyway 버전**: §1.1 분배 (T1=V10, T2=V11, T3=V12, T5=V14) 엄수.
+
 ## [2026-04-16 22:40] Phase H 메일 JMAP 전면 구현 완료
 - **JMAP methodCalls 직렬화 이슈 2건 수정**: (1) Java `Object[]` 를 Jackson 이 JSON 배열이 아닌 객체로 직렬화 → `List.of()` 로 변경. (2) `methodResponses` 역직렬화가 `List<List<Object>>` 로 오는데 `List<Object[]>` 로 캐스팅 시도 → 제네릭 수정. 두 건 모두 Stalwart JMAP 400 응답으로 발견, 수정 후 5개 mailbox 정상 반환.
 - **JMAP 서비스 계정 방식 확정**: `admin:admin` Basic Auth 로 Stalwart JMAP 호출. `accountId` 는 Keycloak `preferred_username` 을 사용하되, Stalwart 가 해당 accountId 를 인식하려면 LDAP 동기화 필수. 현재 admin 계정만 정상 동작, user1/user2 는 LDAP 사용자가 Stalwart 에 프로비저닝된 후 사용 가능.
@@ -104,3 +137,51 @@
 - **상황**: vue-spring-fw는 자체 JWT, openplatform은 Keycloak 사용
 - **판단 내용**: Keycloak 단일 허브로 통일. vue-spring-fw에서 복사한 store/auth.ts와 api/interceptor.ts는 keycloak-js 어댑터로 교체.
 - **근거**: 최상위 규칙 "Keycloak으로 통합 로그인". vue-spring-fw 원본은 건드리지 않고, 복사본만 수정하므로 규칙 준수.
+
+## [2026-04-27] 자율 의사결정 — Phase 14 트랙 2 (회의실 예약)
+- **BffClient 신규 생성**: backend-core 가 backend-bff /api/bff/video/room 를 호출하기 위해
+  `core/common/BffClient.java` 신규 생성 (Spring 6 RestClient 사용). base-url 은
+  `${bff.base-url:http://backend-bff:8080}` 환경변수, 호출 실패 시 null 반환 + warn 로그
+  (LiveKit 룸은 첫 접속 시 자동 생성되므로 폴백 가능 — 비즈니스 트랜잭션 롤백 안 함).
+- **참석자 검색**: 기존 `org/searchEmployees` DataSet 를 재사용 (BookingDialog.vue 가
+  PrimeVue MultiSelect 의 client-side 필터로 처리). status=ACTIVE 만 로드.
+- **livekit_room 컬럼 갱신**: insertBooking 으로 booking_id 발급 후 별도 update
+  (`updateLivekitRoom`) 호출. 룸 이름은 `rm-{bookingId}` 결정적 형식.
+- **본인 cal_event 자동 INSERT**: RoomService.reserve 가 직접 CalendarMapper.insertEvent
+  호출 (CalendarService.saveEvents 의 DataSet 패턴은 _rowType 분기를 거쳐야 하므로 직접
+  호출이 단순). 실패 시 warn 만 — 회의실 예약 자체는 성공.
+- **admin 판정**: SecurityContext role 추출 인프라 부재로 employee_no 시드값(E0001/admin)
+  + position_level >= 90 의 경량 체크. 정밀 권한은 트랙 5(시스템관리) 와 함께 RoleResolver
+  도입 시 강화 예정.
+- **트랙 8 deferred 항목**: /room 라우트 등록, cm_menu INSERT, CalendarService UNION
+  통합, Playwright E2E — 본 트랙은 자기 페이지·서비스만 작성.
+
+## 2026-04-27 — Phase 14 Track 5 (Admin Console)
+- **Keycloak admin token 발급 방식**: realm-export 의 `realm-management` client_credentials grant 가
+  설정되지 않아 (`v3-backend-bff` 가 bearerOnly), master realm 의 기본 `admin-cli` public client +
+  admin/admin password grant 로 발급. 운영 시 service-account 클라이언트 추가 권장
+  (`KEYCLOAK_ADMIN_CLIENT_ID`, `KEYCLOAK_ADMIN_USER`, `KEYCLOAK_ADMIN_PASS` 환경변수로 주입 가능).
+- **AOP vs HandlerInterceptor 선택**: AOP 채택. DataSetController 의 단일 진입점이지만
+  HandlerInterceptor 는 응답 직전 hook 으로 동작해 service 단위 결과 객체 접근이 어렵고,
+  AOP `@Around` 는 메서드 단위 인풋/아웃풋 Map 을 직접 받을 수 있어 before/after JSON 직렬화
+  품질이 더 높음. spring-boot-starter-aop 신규 의존성 추가 (transitive 미포함).
+- **권한 체크 위치**: AdminService 메서드 진입점 (`requireAdmin()`) + BFF identity admin 라우트
+  진입점 (`requireAdmin(auth)`) 양쪽 이중 가드. SecurityConfig URL 매처 가드는 미사용
+  (DataSet 단일 엔드포인트라 path 기반 가드 불가).
+- **admin/* 호출 BFF 호출 시 Auth 전파**: backend-core 가 RestTemplate 로 BFF 를 호출할 때
+  현재 사용자의 JWT Bearer 토큰을 그대로 전파하여 BFF 에서 동일한 ROLE_ADMIN 검증을 거치도록 함.
+- **임시 비밀번호**: `temp123!` 고정. `temporary=true` 로 첫 로그인 시 강제 변경.
+- **MultiSelect 역할 4종**: ROLE_USER / ROLE_APPROVER / ROLE_MANAGER / ROLE_ADMIN. UI 정적 옵션
+  (cm_role 도 admin/menuList 에서 함께 반환되지만 PageUsers 는 단순화 위해 정적 배열 사용).
+- **트랙 8 deferred**: /admin/* 5개 라우트 등록 / cm_menu INSERT (admin_users, admin_depts, ...) /
+  Playwright E2E 시나리오 1·2·4 (Docker 미실행으로 deferred). router/index.ts 수정 금지 규칙 준수.
+
+## [2026-04-27] T7 대시보드 위젯 — 코드 작성 단독 수행 (Docker 검증 deferred)
+- **결정**: V16 마이그레이션 (db_widget 9건 시드 + db_user_widget UNIQUE), WidgetService 5 service (listAll/listMine/saveLayout/addWidget/removeWidget) + WidgetMapper UPSERT 패턴, useWidget.ts, PageDashboard.vue 재작성, 9개 위젯 컴포넌트 신규.
+- **드래그 vs 화살표 선택**: HTML5 drag-and-drop 진짜 드래그 대신 **화살표 버튼 (←→↑↓ + W±/H±)** 채택 — vue-grid-layout 등 npm 패키지 추가 금지 규칙 준수, 키보드 접근성 향상, 12-column 그리드 셀 단위 정밀 이동 가능. CSS Grid 의 `order` 속성 + `--w/--h` CSS 변수로 위치/크기 표현.
+- **default 6 위젯 자동 시드 위치**: `WidgetService.listMine()` 의 server-side 자동 시드 채택. count==0 일 때만 INSERT (사용자가 의도적으로 모든 위젯 제거한 경우 자동 재시드 안 함). default 배치는 12-column × 3행 (ATTENDANCE/LEAVE_BALANCE/PENDING_APPROVAL 4-col 1행, TODAY_EVENTS/NOTICES 6-col 2행, MESSENGER 4-col 3행).
+- **TEAM_WORKLOG 권한 가드**: 위젯 자체에서 `auth.user.roles` 검사 (MANAGER/MGR/ADMIN/DEPT_HEAD 정규식). 비부서장이 추가하면 "부서장 전용" 메시지 표시 (위젯 자체는 노출하되 데이터는 비표시).
+- **차트 라이브러리**: Chart.js 등 미추가. WidgetLeaveBalance 는 SVG `<circle>` × 2 (track + ring) + `stroke-dasharray` donut, WidgetLeaveChart 는 SVG `<rect>` 12개 막대 + 수동 grid lines.
+- **edit_mode 트랜잭션**: 편집 진입 시 `widgets.value` deep-copy snapshot 저장 → 취소 시 복원. 저장은 `saveLayout` 일괄 (C/U 는 upsert, 삭제 큐는 _rowType='D' 로 변환).
+- **트랙 8 deferred**: 라우트/메뉴는 기존 /dashboard 그대로 유지 (메뉴 추가 없음). Playwright 시나리오 (default 6 자동 표시 / 위젯 추가 → 새로고침 유지 / 출근 클릭 → checkIn) 는 Docker 복구 후 트랙 8 통합 시 검증.
+- **트랙 1·2·4 service 미존재 가능성**: 본 트랙은 `attendance/searchToday`, `attendance/checkIn`, `leave/searchBalance`, `leave/searchMyHistory`, `room/searchMyBookings`, `worklog/searchTeamWeekly` 호출만 작성. 같은 Wave 의 트랙들이 작성 중이라 빌드 시점에 따라 미존재 가능 — 런타임은 트랙 8 통합 후 모두 동작.

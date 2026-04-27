@@ -1,0 +1,52 @@
+<template>
+  <Dialog v-model:visible="visible" :modal="true" :style="{ width: '720px' }">
+    <template #header>__domainKorean__ 상세</template>
+    <TabView v-model:active-index="tabIndex">
+      <TabPanel header="상세">
+        <p><b>제목:</b> <InputText v-model="detail.title" /></p>
+        <Textarea v-model="detail.content" :rows="6" />
+      </TabPanel>
+    </TabView>
+    <template #footer>
+      <Button label="취소" severity="secondary" @click="visible = false" />
+      <Button label="저장" @click="save" />
+    </template>
+  </Dialog>
+</template>
+
+<script setup lang="ts">
+import { ref, watch } from 'vue'
+import axios from 'axios'
+import Dialog from 'primevue/dialog'
+import TabView from 'primevue/tabview'
+import TabPanel from 'primevue/tabpanel'
+import InputText from 'primevue/inputtext'
+import Textarea from 'primevue/textarea'
+import Button from 'primevue/button'
+
+const props = defineProps<{ id?: string | null }>()
+const emit = defineEmits(['saved'])
+const visible = defineModel<boolean>('visible', { default: false })
+const tabIndex = ref(0)
+const detail = ref<any>({})
+
+const load = async () => {
+  if (!props.id) { detail.value = {}; return }
+  const res = await axios.post('/api/dataset/search', {
+    serviceName: '__domain-kebab__/searchDetail',
+    datasets: { ds_data: { id: props.id } }
+  })
+  detail.value = res.data.data.ds_detail.rows[0]
+}
+
+const save = async () => {
+  await axios.post('/api/dataset/save', {
+    serviceName: '__domain-kebab__/save',
+    datasets: { ds_data: { rows: [{ _rowType: props.id ? 'U' : 'I', ...detail.value }] } }
+  })
+  emit('saved')
+  visible.value = false
+}
+
+watch(() => visible.value, v => { if (v) load() })
+</script>

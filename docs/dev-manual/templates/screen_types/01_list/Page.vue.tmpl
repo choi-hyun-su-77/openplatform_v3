@@ -1,0 +1,63 @@
+<template>
+  <div class="page">
+    <h2>__domainKorean__</h2>
+    <CrudToolbar v-model:keyword="keyword" @search="load" @add="openCreate" />
+    <DataTable
+      :value="rows"
+      :rows="20"
+      :lazy="true"
+      :total-records="total"
+      paginator
+      row-hover
+      @page="onPage"
+      @row-click="openDetail"
+    >
+      <Column field="id" header="ID" />
+      <Column field="title" header="제목" />
+      <Column field="created_at" header="생성일" />
+    </DataTable>
+    <__DomainPascal__DetailDialog
+      v-model:visible="detailVisible"
+      :id="selectedId"
+      @saved="load"
+    />
+  </div>
+</template>
+
+<script setup lang="ts">
+import { ref, onMounted } from 'vue'
+import axios from 'axios'
+import DataTable from 'primevue/datatable'
+import Column from 'primevue/column'
+import CrudToolbar from '@/components/common/CrudToolbar.vue'
+import __DomainPascal__DetailDialog from '@/components/__domain-kebab__/__DomainPascal__DetailDialog.vue'
+
+const rows = ref<any[]>([])
+const total = ref(0)
+const keyword = ref('')
+const detailVisible = ref(false)
+const selectedId = ref<string | null>(null)
+
+const load = async () => {
+  const res = await axios.post('/api/dataset/search', {
+    serviceName: '__domain-kebab__/searchList',
+    datasets: { ds_search: { keyword: keyword.value } }
+  })
+  rows.value = res.data.data.ds_list.rows
+  total.value = res.data.data.ds_list.totalCount
+}
+
+const openDetail = (e: any) => {
+  selectedId.value = e.data.id
+  detailVisible.value = true
+}
+
+const openCreate = () => {
+  selectedId.value = null
+  detailVisible.value = true
+}
+
+const onPage = (_: any) => load()
+
+onMounted(load)
+</script>

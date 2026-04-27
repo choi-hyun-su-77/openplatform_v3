@@ -1,0 +1,328 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.platform.v3.core.admin.mapper.AdminMapper">
+
+    <!-- ============================================================
+         사용자 (org_employee) — 검색/페이징/CRUD/상태/Keycloak 매핑
+         ============================================================ -->
+    <select id="selectUserList" resultType="map">
+        SELECT e.employee_id, e.employee_no, e.employee_name,
+               e.dept_id, d.dept_name, d.dept_code,
+               e.position_id, p.position_name, p.position_code, p.position_level,
+               e.email, e.phone, e.keycloak_user_id,
+               e.hire_date, e.status,
+               e.created_at, e.updated_at
+        FROM platform_v3.org_employee e
+        INNER JOIN platform_v3.org_department d ON e.dept_id = d.dept_id
+        INNER JOIN platform_v3.org_position p ON e.position_id = p.position_id
+        WHERE 1=1
+        <if test="keyword != null and keyword != ''">
+            AND (e.employee_name LIKE '%' || #{keyword} || '%'
+                 OR e.employee_no LIKE '%' || #{keyword} || '%'
+                 OR e.email LIKE '%' || #{keyword} || '%'
+                 OR e.keycloak_user_id LIKE '%' || #{keyword} || '%')
+        </if>
+        <if test="deptId != null">AND e.dept_id = #{deptId}</if>
+        <if test="status != null and status != ''">AND e.status = #{status}</if>
+        ORDER BY e.employee_no
+        OFFSET #{offset} LIMIT #{limit}
+    </select>
+
+    <select id="countUserList" resultType="long">
+        SELECT COUNT(*)
+        FROM platform_v3.org_employee e
+        WHERE 1=1
+        <if test="keyword != null and keyword != ''">
+            AND (e.employee_name LIKE '%' || #{keyword} || '%'
+                 OR e.employee_no LIKE '%' || #{keyword} || '%'
+                 OR e.email LIKE '%' || #{keyword} || '%'
+                 OR e.keycloak_user_id LIKE '%' || #{keyword} || '%')
+        </if>
+        <if test="deptId != null">AND e.dept_id = #{deptId}</if>
+        <if test="status != null and status != ''">AND e.status = #{status}</if>
+    </select>
+
+    <select id="selectUserById" resultType="map">
+        SELECT e.employee_id, e.employee_no, e.employee_name,
+               e.dept_id, d.dept_name, d.dept_code,
+               e.position_id, p.position_name, p.position_code, p.position_level,
+               e.email, e.phone, e.keycloak_user_id,
+               e.hire_date, e.status, e.created_at, e.updated_at
+        FROM platform_v3.org_employee e
+        INNER JOIN platform_v3.org_department d ON e.dept_id = d.dept_id
+        INNER JOIN platform_v3.org_position p ON e.position_id = p.position_id
+        WHERE e.employee_id = #{employeeId}
+    </select>
+
+    <select id="selectUserByNo" resultType="map">
+        SELECT employee_id, employee_no, employee_name, dept_id, position_id,
+               email, phone, keycloak_user_id, hire_date, status
+        FROM platform_v3.org_employee
+        WHERE employee_no = #{employeeNo}
+    </select>
+
+    <insert id="insertUser" useGeneratedKeys="true" keyProperty="employeeId">
+        INSERT INTO platform_v3.org_employee
+            (employee_no, employee_name, dept_id, position_id,
+             email, phone, keycloak_user_id, hire_date, status,
+             created_at, updated_at)
+        VALUES
+            (#{employeeNo}, #{employeeName}, #{deptId}, #{positionId},
+             #{email}, #{phone}, #{keycloakUserId},
+             <choose>
+                 <when test="hireDate != null">CAST(#{hireDate} AS DATE)</when>
+                 <otherwise>CURRENT_DATE</otherwise>
+             </choose>,
+             COALESCE(#{status}, 'ACTIVE'),
+             NOW(), NOW())
+    </insert>
+
+    <update id="updateUser">
+        UPDATE platform_v3.org_employee
+           SET employee_name = #{employeeName},
+               dept_id       = #{deptId},
+               position_id   = #{positionId},
+               email         = #{email},
+               phone         = #{phone},
+               <if test="keycloakUserId != null">keycloak_user_id = #{keycloakUserId},</if>
+               updated_at    = NOW()
+         WHERE employee_id = #{employeeId}
+    </update>
+
+    <update id="updateUserStatus">
+        UPDATE platform_v3.org_employee
+           SET status = #{status}, updated_at = NOW()
+         WHERE employee_id = #{employeeId}
+    </update>
+
+    <update id="updateUserKeycloakId">
+        UPDATE platform_v3.org_employee
+           SET keycloak_user_id = #{keycloakUserId}, updated_at = NOW()
+         WHERE employee_id = #{employeeId}
+    </update>
+
+    <!-- ============================================================
+         부서 (org_department) — 트리/CRUD
+         ============================================================ -->
+    <select id="selectDeptTreeAll" resultType="map">
+        WITH RECURSIVE dept_tree AS (
+            SELECT d.dept_id, d.dept_code, d.dept_name, d.parent_dept_id,
+                   d.dept_level, d.sort_order, d.use_yn
+            FROM platform_v3.org_department d
+            WHERE d.parent_dept_id IS NULL
+            UNION ALL
+            SELECT c.dept_id, c.dept_code, c.dept_name, c.parent_dept_id,
+                   c.dept_level, c.sort_order, c.use_yn
+            FROM platform_v3.org_department c
+            INNER JOIN dept_tree p ON c.parent_dept_id = p.dept_id
+        )
+        SELECT dept_id, dept_code, dept_name, parent_dept_id, dept_level, sort_order, use_yn
+        FROM dept_tree
+        ORDER BY dept_level, sort_order, dept_name
+    </select>
+
+    <select id="selectDeptById" resultType="map">
+        SELECT dept_id, dept_code, dept_name, parent_dept_id, dept_level, sort_order, use_yn
+        FROM platform_v3.org_department
+        WHERE dept_id = #{deptId}
+    </select>
+
+    <insert id="insertDept" useGeneratedKeys="true" keyProperty="deptId">
+        INSERT INTO platform_v3.org_department
+            (dept_code, dept_name, parent_dept_id, dept_level, sort_order, use_yn, created_at, updated_at)
+        VALUES
+            (#{deptCode}, #{deptName}, #{parentDeptId},
+             COALESCE(#{deptLevel}, 1),
+             COALESCE(#{sortOrder}, 0),
+             COALESCE(#{useYn}, 'Y'),
+             NOW(), NOW())
+    </insert>
+
+    <update id="updateDept">
+        UPDATE platform_v3.org_department
+           SET dept_code      = #{deptCode},
+               dept_name      = #{deptName},
+               parent_dept_id = #{parentDeptId},
+               dept_level     = COALESCE(#{deptLevel}, dept_level),
+               sort_order     = COALESCE(#{sortOrder}, sort_order),
+               use_yn         = COALESCE(#{useYn}, use_yn),
+               updated_at     = NOW()
+         WHERE dept_id = #{deptId}
+    </update>
+
+    <delete id="deleteDept">
+        DELETE FROM platform_v3.org_department WHERE dept_id = #{deptId}
+    </delete>
+
+    <!-- ============================================================
+         메뉴 (cm_menu / cm_role_menu) — 트리/CRUD/권한 매트릭스
+         ============================================================ -->
+    <select id="selectMenuListAll" resultType="map">
+        SELECT menu_id, menu_name, menu_path, parent_menu_id,
+               menu_level, sort_order, icon, use_yn, created_at
+        FROM platform_v3.cm_menu
+        ORDER BY menu_level, sort_order, menu_id
+    </select>
+
+    <select id="selectMenuById" resultType="map">
+        SELECT menu_id, menu_name, menu_path, parent_menu_id,
+               menu_level, sort_order, icon, use_yn
+        FROM platform_v3.cm_menu
+        WHERE menu_id = #{menuId}
+    </select>
+
+    <insert id="insertMenu">
+        INSERT INTO platform_v3.cm_menu
+            (menu_id, menu_name, menu_path, parent_menu_id, menu_level, sort_order, icon, use_yn, created_at)
+        VALUES
+            (#{menuId}, #{menuName}, #{menuPath}, #{parentMenuId},
+             COALESCE(#{menuLevel}, 1),
+             COALESCE(#{sortOrder}, 0),
+             #{icon},
+             COALESCE(#{useYn}, 'Y'),
+             NOW())
+    </insert>
+
+    <update id="updateMenu">
+        UPDATE platform_v3.cm_menu
+           SET menu_name      = #{menuName},
+               menu_path      = #{menuPath},
+               parent_menu_id = #{parentMenuId},
+               menu_level     = COALESCE(#{menuLevel}, menu_level),
+               sort_order     = COALESCE(#{sortOrder}, sort_order),
+               icon           = #{icon},
+               use_yn         = COALESCE(#{useYn}, use_yn)
+         WHERE menu_id = #{menuId}
+    </update>
+
+    <delete id="deleteMenu">
+        DELETE FROM platform_v3.cm_menu WHERE menu_id = #{menuId}
+    </delete>
+
+    <select id="selectPermissionMatrix" resultType="map">
+        SELECT rm.role_id, rm.menu_id,
+               m.menu_name,
+               rm.can_read, rm.can_create, rm.can_update,
+               rm.can_delete, rm.can_export, rm.can_print
+        FROM platform_v3.cm_role_menu rm
+        INNER JOIN platform_v3.cm_menu m ON m.menu_id = rm.menu_id
+        ORDER BY rm.role_id, m.menu_level, m.sort_order
+    </select>
+
+    <delete id="deleteRoleMenu">
+        DELETE FROM platform_v3.cm_role_menu
+         WHERE role_id = #{roleId} AND menu_id = #{menuId}
+    </delete>
+
+    <insert id="upsertRoleMenu">
+        INSERT INTO platform_v3.cm_role_menu
+            (role_id, menu_id, can_read, can_create, can_update, can_delete, can_export, can_print)
+        VALUES
+            (#{roleId}, #{menuId},
+             COALESCE(#{canRead}, FALSE),
+             COALESCE(#{canCreate}, FALSE),
+             COALESCE(#{canUpdate}, FALSE),
+             COALESCE(#{canDelete}, FALSE),
+             COALESCE(#{canExport}, FALSE),
+             COALESCE(#{canPrint}, FALSE))
+        ON CONFLICT (role_id, menu_id) DO UPDATE SET
+            can_read   = EXCLUDED.can_read,
+            can_create = EXCLUDED.can_create,
+            can_update = EXCLUDED.can_update,
+            can_delete = EXCLUDED.can_delete,
+            can_export = EXCLUDED.can_export,
+            can_print  = EXCLUDED.can_print
+    </insert>
+
+    <select id="selectRoles" resultType="map">
+        SELECT role_id, role_name, description
+        FROM platform_v3.cm_role
+        ORDER BY role_id
+    </select>
+
+    <!-- ============================================================
+         공통코드 (cm_code)
+         ============================================================ -->
+    <select id="selectCodeGroups" resultType="map">
+        SELECT group_cd, COUNT(*) AS code_count
+        FROM platform_v3.cm_code
+        GROUP BY group_cd
+        ORDER BY group_cd
+    </select>
+
+    <select id="selectCodeList" resultType="map">
+        SELECT group_cd, code, code_name, sort_order, use_yn, created_at
+        FROM platform_v3.cm_code
+        <where>
+            <if test="groupCd != null and groupCd != ''">
+                group_cd = #{groupCd}
+            </if>
+        </where>
+        ORDER BY group_cd, sort_order, code
+    </select>
+
+    <insert id="insertCode">
+        INSERT INTO platform_v3.cm_code (group_cd, code, code_name, sort_order, use_yn, created_at)
+        VALUES (#{groupCd}, #{code}, #{codeName},
+                COALESCE(#{sortOrder}, 0),
+                COALESCE(#{useYn}, 'Y'),
+                NOW())
+        ON CONFLICT (group_cd, code) DO UPDATE SET
+            code_name  = EXCLUDED.code_name,
+            sort_order = EXCLUDED.sort_order,
+            use_yn     = EXCLUDED.use_yn
+    </insert>
+
+    <update id="updateCode">
+        UPDATE platform_v3.cm_code
+           SET code_name  = #{codeName},
+               sort_order = COALESCE(#{sortOrder}, sort_order),
+               use_yn     = COALESCE(#{useYn}, use_yn)
+         WHERE group_cd = #{groupCd} AND code = #{code}
+    </update>
+
+    <delete id="deleteCode">
+        DELETE FROM platform_v3.cm_code
+         WHERE group_cd = #{groupCd} AND code = #{code}
+    </delete>
+
+    <!-- ============================================================
+         감사 로그 (sa_audit)
+         ============================================================ -->
+    <insert id="insertAudit">
+        INSERT INTO platform_v3.sa_audit
+            (actor_no, actor_name, action, target_type, target_id,
+             before_json, after_json, ip_addr, acted_at)
+        VALUES
+            (#{actorNo}, #{actorName}, #{action}, #{targetType}, #{targetId},
+             CAST(#{beforeJson} AS JSONB),
+             CAST(#{afterJson} AS JSONB),
+             #{ipAddr},
+             NOW())
+    </insert>
+
+    <select id="selectAuditList" resultType="map">
+        SELECT audit_id, actor_no, actor_name, action, target_type, target_id,
+               before_json, after_json, ip_addr, acted_at
+        FROM platform_v3.sa_audit
+        WHERE 1=1
+        <if test="actorNo != null and actorNo != ''">AND actor_no = #{actorNo}</if>
+        <if test="action != null and action != ''">AND action LIKE '%' || #{action} || '%'</if>
+        <if test="fromDate != null and fromDate != ''">AND acted_at &gt;= CAST(#{fromDate} AS TIMESTAMPTZ)</if>
+        <if test="toDate != null and toDate != ''">AND acted_at &lt; (CAST(#{toDate} AS DATE) + INTERVAL '1 day')</if>
+        ORDER BY acted_at DESC
+        OFFSET #{offset} LIMIT #{limit}
+    </select>
+
+    <select id="countAuditList" resultType="long">
+        SELECT COUNT(*)
+        FROM platform_v3.sa_audit
+        WHERE 1=1
+        <if test="actorNo != null and actorNo != ''">AND actor_no = #{actorNo}</if>
+        <if test="action != null and action != ''">AND action LIKE '%' || #{action} || '%'</if>
+        <if test="fromDate != null and fromDate != ''">AND acted_at &gt;= CAST(#{fromDate} AS TIMESTAMPTZ)</if>
+        <if test="toDate != null and toDate != ''">AND acted_at &lt; (CAST(#{toDate} AS DATE) + INTERVAL '1 day')</if>
+    </select>
+
+</mapper>

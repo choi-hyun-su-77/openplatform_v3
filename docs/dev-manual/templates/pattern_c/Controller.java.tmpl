@@ -1,0 +1,31 @@
+package com.platform.v3.bff.api;
+
+import com.platform.v3.bff.common.ApiResponse;
+import com.platform.v3.bff.port.__CapabilityPascal__Port;
+import lombok.RequiredArgsConstructor;
+import org.springframework.web.bind.annotation.*;
+import reactor.core.publisher.Mono;
+import java.util.Map;
+
+@RestController
+@RequestMapping("/api/bff/__capabilityCamel__")
+@RequiredArgsConstructor
+public class __CapabilityPascal__Controller {
+
+    private final __CapabilityPascal__Port port;
+
+    @GetMapping("/{id}")
+    public Mono<ApiResponse<Map<String, Object>>> get(@PathVariable String id) {
+        return port.get__CapabilityPascal__(id).map(ApiResponse::ok);
+    }
+
+    @PostMapping
+    public Mono<ApiResponse<Map<String, Object>>> create(@RequestBody Map<String, Object> req) {
+        return port.create__CapabilityPascal__(req).map(ApiResponse::ok);
+    }
+
+    @DeleteMapping("/{id}")
+    public Mono<ApiResponse<Void>> delete(@PathVariable String id) {
+        return port.delete__CapabilityPascal__(id).then(Mono.fromCallable(() -> ApiResponse.<Void>ok(null)));
+    }
+}
