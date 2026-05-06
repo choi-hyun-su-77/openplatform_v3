@@ -1,0 +1,87 @@
+==================================================================
+openplatform_v3 — 서비스 정보 (포트 대역: 19xxx, traefik 18xxx)
+==================================================================
+스택: Spring Boot 3.2 (core + BFF) + MyBatis + Flowable + Vue 3
+      Keycloak 24 (OIDC IdP) + PostgreSQL 16 + Redis 7 + Mongo 7
+      MinIO + OpenLDAP + Stalwart(메일) + LiveKit(RTC)
+      Rocket.Chat (Mattermost 대체) + Wiki.js
+Compose: infra/docker-compose.yml  (+ healthcheck / resources / traefik / observability / cron override)
+
+------------------------------------------------------------------
+[ URL — 직접 포트 접근 ]
+------------------------------------------------------------------
+UI Frontend (nginx)     http://localhost:19173
+UI (vite dev)           http://localhost:25174       # cd ui && npm run dev
+Backend Core            http://localhost:19090
+Backend BFF             http://localhost:19091
+Keycloak Admin Console  http://localhost:19281/admin
+                        http://kc.localtest.me:19281 (토큰 iss 통일)
+MinIO Console           http://localhost:19901
+MinIO S3 API            http://localhost:19900
+Rocket.Chat             http://localhost:19065
+Wiki.js                 http://localhost:19001
+Stalwart Webmail        http://localhost:19480
+Stalwart SMTP/IMAP      :19025 / :19143
+LiveKit                 ws://localhost:19880
+OpenLDAP                ldap://localhost:19389
+PostgreSQL              postgres://localhost:19432/platform_v3
+Redis                   redis://localhost:19379
+
+[ observability override 활성 시 ]
+Grafana                 http://localhost:19300       # admin / admin
+Prometheus              http://localhost:19309
+Loki                    http://localhost:19310
+
+[ traefik override 활성 시 ]
+Traefik dashboard       http://localhost:18082
+포털 라우팅:
+  portal.v3.localhost      → ui-frontend
+  api.v3.localhost         → backend-core
+  bff.v3.localhost         → backend-bff
+  keycloak.v3.localhost    → keycloak
+  minio.v3.localhost       → minio S3
+  s3.v3.localhost          → minio Console
+  chat.v3.localhost        → rocketchat
+  wiki.v3.localhost        → wikijs
+  mail.v3.localhost        → stalwart
+
+------------------------------------------------------------------
+[ 계정 ]
+------------------------------------------------------------------
+PostgreSQL              platform_v3 / platform_v3_pass     (DB: platform_v3)
+Redis                   requirepass: v3_redis_pass
+MinIO                   v3minio / v3minio_pass
+
+Keycloak Admin          admin / admin                       (Realm: openplatform-v3)
+Rocket.Chat 초기 admin  v3admin / Admin1234!                (Email: v3admin@v3.local)
+                        Keycloak OAuth 자동 연동 (OVERWRITE_SETTING_*)
+Wiki.js                 최초 접속 시 웹 UI 에서 admin 생성
+
+OpenLDAP                cn=admin,dc=v3,dc=local / adminpass
+                        configpass / configpass             (config DB)
+                        BASE DN: dc=v3,dc=local
+
+LiveKit                 API key: devkey
+                        API secret: devsecret_v3_changeme_32chars_minimum
+
+Grafana (observability) admin / admin
+
+------------------------------------------------------------------
+[ 실행 ]
+------------------------------------------------------------------
+기본 (16개)             ./start.sh
++ traefik               ./start.sh -t
++ observability         ./start.sh -o
++ traefik+obs+cron      ./start.sh --production
+정지                    ./stop.sh
+
+기존 스크립트           ./scripts/start.sh [dev|full|observability|traefik|production|stop|status|logs|init-mongo]
+
+------------------------------------------------------------------
+[ 비고 ]
+------------------------------------------------------------------
+- backend-core / backend-bff / ui-frontend 는 컨테이너로 실행 (build 정의 포함).
+- 개발 시 ui 만 호스트 실행 권장 (vite HMR 위해).
+- Traefik 활성화 시 외부 traefik-net 네트워크 선행 필요 (루트 traefik 스택).
+- Stalwart 메일 초기 계정은 OpenLDAP 통합으로 관리.
+==================================================================
