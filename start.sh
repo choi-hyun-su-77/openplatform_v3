@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+﻿#!/usr/bin/env bash
 # openplatform_v3 — 전체 서비스 기동
 # 기본 16개 서비스 + healthcheck/resources override 포함 (full 모드)
 # Traefik / observability 가 필요하면 -t 또는 -o 인자 추가

@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+﻿#!/usr/bin/env bash
 # openplatform_v3 — 전체 서비스 정지 (모든 override 포함, 볼륨 보존)
 set -uo pipefail
 ROOT="$(cd "$(dirname "$0")" && pwd)"
