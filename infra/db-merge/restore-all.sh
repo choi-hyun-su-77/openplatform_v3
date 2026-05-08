@@ -76,9 +76,10 @@ done
 # ---------- MongoDB ----------
 MONGO_ARCHIVE="${DUMPS_DIR}/mongo-all.archive.gz"
 if [[ -f "$MONGO_ARCHIVE" ]]; then
-    step "Restore MongoDB (drop existing collections)"
+    step "Restore MongoDB (drop existing collections; system DBs 는 nsExclude)"
     docker cp "$MONGO_ARCHIVE" "${MONGO_CONTAINER}:/tmp/mongo-all.archive.gz"
-    docker exec "$MONGO_CONTAINER" mongorestore --archive=/tmp/mongo-all.archive.gz --gzip --drop
+    docker exec "$MONGO_CONTAINER" mongorestore --archive=/tmp/mongo-all.archive.gz --gzip --drop \
+        --nsExclude='admin.*' --nsExclude='config.*' --nsExclude='local.*'
     docker exec "$MONGO_CONTAINER" rm -f /tmp/mongo-all.archive.gz
 fi
 

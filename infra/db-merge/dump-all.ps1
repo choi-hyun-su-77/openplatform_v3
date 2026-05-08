@@ -104,16 +104,18 @@ if ($mongoExcluded.Count -gt 0) {
     Write-Host ("    excluded mongo collections: {0}" -f ($mongoExcluded -join ', ')) -ForegroundColor DarkGray
 }
 
-Invoke-Step "Dump MongoDB (all user DBs, archive+gzip)" {
+Invoke-Step "Dump MongoDB (all DBs, archive+gzip — admin/config/local 은 restore 단계에서 nsExclude)" {
     $excludeFlags = ($mongoExcluded | ForEach-Object { "--excludeCollection=$_" }) -join ' '
-    $shCmd = "mongodump --archive=/tmp/mongo-all.archive.gz --gzip --excludeDatabase=admin --excludeDatabase=config $excludeFlags"
+    # --quiet: PowerShell 5.1 에서 native stderr 출력이 NativeCommandError 로 wrap 되는 문제 회피.
+    $shCmd = "mongodump --quiet --archive=/tmp/mongo-all.archive.gz --gzip $excludeFlags"
     docker exec $MongoContainer sh -c $shCmd
     docker cp "${MongoContainer}:/tmp/mongo-all.archive.gz" $mongoArchive
     docker exec $MongoContainer rm -f /tmp/mongo-all.archive.gz
 }
 
 # ---------- MANIFEST ----------
-$files = Get-ChildItem -Path $DumpsDir -File | Where-Object { $_.Name -ne 'MANIFEST.json' }
+$files = Get-ChildItem -Path $DumpsDir -File |
+    Where-Object { $_.Name -ne 'MANIFEST.json' -and -not $_.Name.StartsWith('.') }
 $entries = foreach ($f in $files) {
     $hash = (Get-FileHash -Algorithm SHA256 -Path $f.FullName).Hash.ToLower()
     [pscustomobject]@{

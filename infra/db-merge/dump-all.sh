@@ -73,8 +73,8 @@ while IFS= read -r line; do
 done <<< "$mongo_excluded"
 [[ -n "${mongo_excluded//[$'\n\r\t ']}" ]] && printf '    excluded mongo collections: %s\n' "$(echo "$mongo_excluded" | tr '\n' ',' | sed 's/,$//')"
 
-step "Dump MongoDB (all user DBs, archive+gzip)"
-docker exec "$MONGO_CONTAINER" sh -c "mongodump --archive=/tmp/mongo-all.archive.gz --gzip --excludeDatabase=admin --excludeDatabase=config${mongo_exclude_flags}"
+step "Dump MongoDB (all DBs, archive+gzip — admin/config/local 은 restore 단계에서 nsExclude)"
+docker exec "$MONGO_CONTAINER" sh -c "mongodump --quiet --archive=/tmp/mongo-all.archive.gz --gzip${mongo_exclude_flags}"
 docker cp "${MONGO_CONTAINER}:/tmp/mongo-all.archive.gz" "${DUMPS_DIR}/mongo-all.archive.gz"
 docker exec "$MONGO_CONTAINER" rm -f /tmp/mongo-all.archive.gz
 
@@ -97,6 +97,7 @@ MANIFEST="${DUMPS_DIR}/MANIFEST.json"
     for f in "${DUMPS_DIR}"/*; do
         bn="$(basename "$f")"
         [[ "$bn" == "MANIFEST.json" ]] && continue
+        [[ "$bn" == .* ]] && continue
         bytes=$(wc -c < "$f" | tr -d ' ')
         sha=$(sha256sum "$f" | awk '{print $1}')
         [[ $first -eq 0 ]] && printf ',\n'

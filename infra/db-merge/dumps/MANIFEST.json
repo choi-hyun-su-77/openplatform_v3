@@ -1,0 +1,33 @@
+﻿{
+    "createdAtUtc":  "2026-05-08T23:13:13.1945781Z",
+    "host":  "DESKTOP-TT8G8KD",
+    "postgresContainer":  "v3-postgres",
+    "mongoContainer":  "v3-mongo",
+    "postgresDatabases":  [
+                              "platform_v3",
+                              "wiki_v3"
+                          ],
+    "excludeRegex":  "(^|_)(log|logs|audit)($|_|s)|^event_entity$|^admin_event_entity$",
+    "files":  [
+                  {
+                      "name":  "mongo-all.archive.gz",
+                      "bytes":  149155,
+                      "sha256":  "f21701cd71e2e4e64b3b1a0189b7815dda7faac3303ead4ef016f91a295a99f4"
+                  },
+                  {
+                      "name":  "postgres-globals.sql",
+                      "bytes":  636,
+                      "sha256":  "a916ef5f36cd72b047c42731e530bae490825304561940056844ff408c90889c"
+                  },
+                  {
+                      "name":  "postgres-platform_v3.dump",
+                      "bytes":  581796,
+                      "sha256":  "2d27fc4706e17e7f77f322edfc652e62d51571330a1c44a71272aaeecb677831"
+                  },
+                  {
+                      "name":  "postgres-wiki_v3.dump",
+                      "bytes":  62473,
+                      "sha256":  "6f5425417008b811f66f0dcc2da3cc7c8e1333b1a5a6c029eb1e4208fca81bf3"
+                  }
+              ]
+}

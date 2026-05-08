@@ -92,10 +92,11 @@ foreach ($f in $pgDumps) {
 # ---------- MongoDB ----------
 $mongoArchive = Join-Path $DumpsDir 'mongo-all.archive.gz'
 if (Test-Path $mongoArchive) {
-    Invoke-Step "Restore MongoDB (drop existing collections)" {
+    Invoke-Step "Restore MongoDB (drop existing collections; system DBs 는 nsExclude)" {
         $remote = '/tmp/mongo-all.archive.gz'
         docker cp $mongoArchive "${MongoContainer}:$remote"
-        docker exec $MongoContainer mongorestore --archive=$remote --gzip --drop
+        docker exec $MongoContainer mongorestore --archive=$remote --gzip --drop `
+            --nsExclude='admin.*' --nsExclude='config.*' --nsExclude='local.*'
         docker exec $MongoContainer rm -f $remote
     }
 }
