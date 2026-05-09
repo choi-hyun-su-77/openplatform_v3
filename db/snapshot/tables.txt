@@ -1,0 +1,34 @@
+# openplatform_v3 — data-merge whitelist (platform_v3 schema)
+# 제외: ap_history, sa_audit (감사로그), flyway_schema_history, meta_version (메타)
+# keycloak_v3, flowable_v3, wiki_v3 schema는 인프라 메타스토어로 범위 외
+
+ap_approval_line
+ap_attachment
+ap_delegation
+ap_document
+at_attendance
+at_leave_balance
+at_leave_request
+bd_attachment
+bd_comment
+bd_post
+cal_event
+cm_code
+cm_holiday
+cm_i18n_message
+cm_menu
+cm_notification
+cm_role
+cm_role_menu
+db_user_widget
+db_widget
+dl_file
+dl_folder
+org_department
+org_employee
+org_position
+rm_booking
+rm_room
+ux_favorite
+ux_notify_pref
+wr_daily
