@@ -16,41 +16,41 @@
 -->
 <template>
   <div class="action-bar">
-    <Button v-if="canApprove" label="승인" icon="pi pi-check" severity="success"
+    <Button v-if="canApprove" :label="t('BTN_APPROVE')" icon="pi pi-check" severity="success"
             @click="onApprove" :loading="busy" />
-    <Button v-if="canApprove" label="반려" icon="pi pi-times" severity="danger"
+    <Button v-if="canApprove" :label="t('BTN_REJECT')" icon="pi pi-times" severity="danger"
             @click="onReject" :loading="busy" />
-    <Button v-if="canWithdraw" label="회수" icon="pi pi-undo" severity="secondary"
+    <Button v-if="canWithdraw" :label="t('BTN_WITHDRAW')" icon="pi pi-undo" severity="secondary"
             @click="onWithdraw" :loading="busy" />
-    <Button v-if="canResubmit" label="재상신" icon="pi pi-refresh" severity="warn"
+    <Button v-if="canResubmit" :label="t('BTN_RESUBMIT')" icon="pi pi-refresh" severity="warn"
             @click="onResubmit" :loading="busy" />
-    <Button label="대결 등록" icon="pi pi-user-edit" severity="contrast"
+    <Button :label="t('BTN_DELEGATE')" icon="pi pi-user-edit" severity="contrast"
             @click="showDelegate = true" />
 
     <!-- 코멘트 입력 다이얼로그 -->
     <Dialog v-model:visible="showCommentDialog" :header="commentTitle" modal :style="{ width: '420px' }">
-      <Textarea v-model="commentText" rows="4" autoResize placeholder="의견을 입력하세요" class="w-full" />
+      <Textarea v-model="commentText" rows="4" autoResize :placeholder="t('PH_COMMENT')" class="w-full" />
       <template #footer>
-        <Button label="취소" text @click="showCommentDialog = false" />
-        <Button label="확인" @click="confirmComment" :loading="busy" />
+        <Button :label="t('BTN_CANCEL')" text @click="showCommentDialog = false" />
+        <Button :label="t('BTN_CONFIRM')" @click="confirmComment" :loading="busy" />
       </template>
     </Dialog>
 
     <!-- 대결 등록 다이얼로그 -->
-    <Dialog v-model:visible="showDelegate" header="대결(위임) 등록" modal :style="{ width: '480px' }">
+    <Dialog v-model:visible="showDelegate" :header="t('LBL_APPROVAL_DELEGATE_HEADER')" modal :style="{ width: '480px' }">
       <div class="form-grid">
-        <label>대리 결재자 사번</label>
-        <InputText v-model="delegate.delegateeNo" placeholder="예: E0010" />
-        <label>사유</label>
-        <InputText v-model="delegate.reason" placeholder="휴가 / 출장 등" />
-        <label>시작일</label>
+        <label>{{ t('LBL_APPROVAL_DELEGATEE_NO') }}</label>
+        <InputText v-model="delegate.delegateeNo" :placeholder="t('PH_DELEGATEE_NO')" />
+        <label>{{ t('LBL_APPROVAL_REASON') }}</label>
+        <InputText v-model="delegate.reason" :placeholder="t('PH_DELEGATE_REASON')" />
+        <label>{{ t('LBL_APPROVAL_FROM_DATE') }}</label>
         <InputText v-model="delegate.fromDate" type="date" />
-        <label>종료일</label>
+        <label>{{ t('LBL_APPROVAL_TO_DATE') }}</label>
         <InputText v-model="delegate.toDate" type="date" />
       </div>
       <template #footer>
-        <Button label="취소" text @click="showDelegate = false" />
-        <Button label="등록" @click="confirmDelegate" :loading="busy" />
+        <Button :label="t('BTN_CANCEL')" text @click="showDelegate = false" />
+        <Button :label="t('BTN_REGISTER')" @click="confirmDelegate" :loading="busy" />
       </template>
     </Dialog>
   </div>
@@ -64,6 +64,9 @@ import Textarea from 'primevue/textarea';
 import InputText from 'primevue/inputtext';
 import { useAuthStore } from '@/store/auth';
 import { useApproval } from '@/composables/useApproval';
+import { useLabel } from '@/composables/useLabel';
+
+const { t } = useLabel();
 
 interface Doc {
   docId: number;
@@ -105,7 +108,7 @@ const canResubmit = computed(() =>
 const showCommentDialog = ref(false);
 const commentText = ref('');
 const commentMode = ref<'approve' | 'reject'>('approve');
-const commentTitle = computed(() => commentMode.value === 'approve' ? '승인 의견' : '반려 사유');
+const commentTitle = computed(() => commentMode.value === 'approve' ? t('LBL_APPROVAL_COMMENT_APPROVE') : t('LBL_APPROVAL_COMMENT_REJECT'));
 
 function onApprove() { commentMode.value = 'approve'; commentText.value = ''; showCommentDialog.value = true; }
 function onReject()  { commentMode.value = 'reject';  commentText.value = ''; showCommentDialog.value = true; }
@@ -113,7 +116,7 @@ function onReject()  { commentMode.value = 'reject';  commentText.value = ''; sh
 async function confirmComment() {
   if (!props.doc || !props.line) return;
   if (commentMode.value === 'reject' && !commentText.value.trim()) {
-    alert('반려 사유를 입력하세요');
+    alert(t('MSG_APPROVAL_REJECT_REASON_REQ'));
     return;
   }
   busy.value = true;
@@ -126,7 +129,8 @@ async function confirmComment() {
     showCommentDialog.value = false;
     emit('changed');
   } catch (e: any) {
-    alert((commentMode.value === 'approve' ? '승인' : '반려') + ' 실패: ' + (e?.response?.data?.message || e.message));
+    const failMsg = commentMode.value === 'approve' ? t('MSG_APPROVAL_APPROVE_FAILED') : t('MSG_APPROVAL_REJECT_FAILED');
+    alert(failMsg + ': ' + (e?.response?.data?.message || e.message));
   } finally {
     busy.value = false;
   }
@@ -134,13 +138,13 @@ async function confirmComment() {
 
 async function onWithdraw() {
   if (!props.doc) return;
-  if (!confirm('이 문서를 회수하시겠습니까? DRAFT 상태로 되돌아갑니다.')) return;
+  if (!confirm(t('MSG_APPROVAL_WITHDRAW_CONFIRM'))) return;
   busy.value = true;
   try {
     await approval.withdraw(props.doc.docId);
     emit('changed');
   } catch (e: any) {
-    alert('회수 실패: ' + (e?.response?.data?.message || e.message));
+    alert(t('MSG_APPROVAL_WITHDRAW_FAILED') + ': ' + (e?.response?.data?.message || e.message));
   } finally {
     busy.value = false;
   }
@@ -148,14 +152,14 @@ async function onWithdraw() {
 
 async function onResubmit() {
   if (!props.doc) return;
-  if (!confirm('반려된 문서를 재상신하시겠습니까? 새 문서 버전이 생성됩니다.')) return;
+  if (!confirm(t('MSG_APPROVAL_RESUBMIT_CONFIRM'))) return;
   busy.value = true;
   try {
     const r = await approval.resubmit(props.doc.docId, {});
-    alert('재상신 완료. 신규 docId=' + (r as any).newDocId);
+    alert(t('MSG_APPROVAL_RESUBMIT_DONE').replace('{id}', String((r as any).newDocId)));
     emit('changed');
   } catch (e: any) {
-    alert('재상신 실패: ' + (e?.response?.data?.message || e.message));
+    alert(t('MSG_APPROVAL_RESUBMIT_FAILED') + ': ' + (e?.response?.data?.message || e.message));
   } finally {
     busy.value = false;
   }
@@ -167,17 +171,17 @@ const delegate = ref({ delegateeNo: '', reason: '', fromDate: '', toDate: '' });
 
 async function confirmDelegate() {
   if (!delegate.value.delegateeNo || !delegate.value.fromDate || !delegate.value.toDate) {
-    alert('대리자 / 시작일 / 종료일은 필수입니다');
+    alert(t('MSG_APPROVAL_DELEGATE_REQ'));
     return;
   }
   busy.value = true;
   try {
     await approval.delegate(delegate.value);
-    alert('대결 등록 완료');
+    alert(t('MSG_APPROVAL_DELEGATE_DONE'));
     showDelegate.value = false;
     delegate.value = { delegateeNo: '', reason: '', fromDate: '', toDate: '' };
   } catch (e: any) {
-    alert('대결 등록 실패: ' + (e?.response?.data?.message || e.message));
+    alert(t('MSG_APPROVAL_DELEGATE_FAILED') + ': ' + (e?.response?.data?.message || e.message));
   } finally {
     busy.value = false;
   }

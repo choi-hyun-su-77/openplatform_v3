@@ -1,38 +1,38 @@
 <template>
-  <Dialog v-model:visible="visible" header="회의실 예약" modal
+  <Dialog v-model:visible="visible" :header="t('LBL_ROOM_BOOKING_HEADER')" modal
           :style="{ width: '560px' }" :closable="true" :draggable="false">
     <div class="form-grid">
       <div class="field">
-        <label>제목 <span class="req">*</span></label>
-        <InputText v-model="form.title" placeholder="회의 제목" class="w-full" />
+        <label>{{ t('LBL_TITLE') }} <span class="req">*</span></label>
+        <InputText v-model="form.title" :placeholder="t('PH_ROOM_MEETING_TITLE')" class="w-full" />
       </div>
       <div class="field">
-        <label>회의실 <span class="req">*</span></label>
+        <label>{{ t('LBL_ROOM_LABEL') }} <span class="req">*</span></label>
         <Select v-model="form.roomId" :options="rooms" optionLabel="roomName" optionValue="roomId"
-                placeholder="회의실 선택" class="w-full" @change="onRoomChange" />
+                :placeholder="t('PH_ROOM_SELECT')" class="w-full" @change="onRoomChange" />
       </div>
       <div class="field-row">
         <div class="field flex-1">
-          <label>시작 <span class="req">*</span></label>
+          <label>{{ t('LBL_APPROVAL_FROM_DATE') }} <span class="req">*</span></label>
           <DatePicker v-model="form.startAt" showTime :showSeconds="false" dateFormat="yy-mm-dd"
                       class="w-full" hourFormat="24" />
         </div>
         <div class="field flex-1">
-          <label>종료 <span class="req">*</span></label>
+          <label>{{ t('LBL_APPROVAL_TO_DATE') }} <span class="req">*</span></label>
           <DatePicker v-model="form.endAt" showTime :showSeconds="false" dateFormat="yy-mm-dd"
                       class="w-full" hourFormat="24" />
         </div>
       </div>
       <div class="field">
-        <label>참석자</label>
+        <label>{{ t('LBL_ROOM_ATTENDEES') }}</label>
         <MultiSelect v-model="form.attendees" :options="employees" filter optionLabel="employee_name"
-                     optionValue="employee_no" placeholder="참석자 선택"
+                     optionValue="employee_no" :placeholder="t('PH_ROOM_ATTENDEES')"
                      class="w-full" :maxSelectedLabels="5" display="chip" />
       </div>
       <div class="field" v-if="selectedRoom?.hasVideo">
         <label>
           <input type="checkbox" v-model="form.useVideo" disabled />
-          화상회의 자동 생성 (이 회의실은 LiveKit 연동)
+          {{ t('LBL_ROOM_AUTO_VIDEO') }}
         </label>
       </div>
       <div class="field-note" v-if="conflictMessage">
@@ -40,8 +40,8 @@
       </div>
     </div>
     <template #footer>
-      <Button label="취소" severity="secondary" @click="visible = false" />
-      <Button label="예약" icon="pi pi-check" @click="handleReserve" :loading="saving" />
+      <Button :label="t('BTN_CANCEL')" severity="secondary" @click="visible = false" />
+      <Button :label="t('BTN_BOOK_ROOM')" icon="pi pi-check" @click="handleReserve" :loading="saving" />
     </template>
   </Dialog>
 </template>
@@ -57,6 +57,9 @@ import MultiSelect from 'primevue/multiselect';
 import DatePicker from 'primevue/datepicker';
 import { useRoom, type Room } from '@/composables/useRoom';
 import { useMessage } from '@/composables/useMessage';
+import { useLabel } from '@/composables/useLabel';
+
+const { t } = useLabel();
 
 const props = defineProps<{
   rooms: Room[];

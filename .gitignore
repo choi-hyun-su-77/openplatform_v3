@@ -35,6 +35,12 @@ ui/node_modules/
 ui/src/**/*.js
 ui/src/**/*.js.map
 
+# Playwright E2E
+ui/test-results/
+ui/playwright-report/
+ui/playwright/.cache/
+ui/tests/e2e/.auth/
+
 # 상태 파일 (warn/fatal 은 남기기)
 info.md
 infra/ldap/custom/

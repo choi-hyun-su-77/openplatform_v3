@@ -16,27 +16,27 @@
         <i class="pi pi-search" />
         <InputText
           v-model="keyword"
-          placeholder="통합 검색..."
+          :placeholder="t('PH_GLOBAL_SEARCH')"
           @keyup.enter="onSearch"
           autofocus
         />
       </span>
       <Button
         icon="pi pi-search"
-        label="검색"
+        :label="t('BTN_SEARCH')"
         severity="info"
         @click="onSearch"
       />
       <div class="filter-group">
-        <span>대상:</span>
+        <span>{{ t('LBL_SEARCH_TARGETS') }}:</span>
         <Checkbox v-model="filters.POST"  inputId="f-post" :binary="true" />
-        <label for="f-post">게시글</label>
+        <label for="f-post">{{ t('LBL_SEARCH_POST') }}</label>
         <Checkbox v-model="filters.DOC"   inputId="f-doc"  :binary="true" />
-        <label for="f-doc">결재</label>
+        <label for="f-doc">{{ t('LBL_SEARCH_DOC') }}</label>
         <Checkbox v-model="filters.EMP"   inputId="f-emp"  :binary="true" />
-        <label for="f-emp">사람</label>
+        <label for="f-emp">{{ t('LBL_SEARCH_EMP') }}</label>
         <Checkbox v-model="filters.FILE"  inputId="f-file" :binary="true" />
-        <label for="f-file">파일</label>
+        <label for="f-file">{{ t('LBL_SEARCH_FILE') }}</label>
       </div>
     </div>
 
@@ -130,10 +130,12 @@ import TabPanel from 'primevue/tabpanel';
 import DataTable from 'primevue/datatable';
 import Column from 'primevue/column';
 import { useUx, type SearchResult, type SearchType, type SearchPostRow, type SearchDocRow, type SearchEmpRow, type SearchFileRow } from '@/composables/useUx';
+import { useLabel } from '@/composables/useLabel';
 
 const router = useRouter();
 const route = useRoute();
 const ux = useUx();
+const { t } = useLabel();
 
 const keyword = ref<string>(String(route.query.q || ''));
 const loading = ref(false);

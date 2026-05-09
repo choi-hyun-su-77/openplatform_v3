@@ -46,7 +46,8 @@ public class SecurityConfig {
                                 "/actuator/metrics",
                                 "/api/public/**",
                                 "/api/codes/**",
-                                "/api/i18n/**"
+                                "/api/i18n/**",
+                                "/api/labels"
                         ).permitAll()
                         .requestMatchers("/api/notification/subscribe").authenticated()
                         .anyRequest().authenticated()

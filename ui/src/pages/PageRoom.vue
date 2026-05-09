@@ -1,31 +1,31 @@
 <template>
   <div class="page-room">
-    <h2>회의실 예약</h2>
+    <h2>{{ t('LBL_PAGE_ROOM') }}</h2>
     <div class="layout">
       <!-- ── 좌측: 회의실 목록 + 필터 ── -->
       <aside class="sidebar">
         <div class="filter-bar">
-          <InputText v-model="filter.keyword" placeholder="회의실 검색" class="w-full"
+          <InputText v-model="filter.keyword" :placeholder="t('PH_ROOM_SEARCH')" class="w-full"
                      @input="onFilterChange" />
           <div class="filter-row">
-            <label class="cap-label">최소 인원</label>
+            <label class="cap-label">{{ t('LBL_ROOM_MIN_CAPACITY') }}</label>
             <InputNumber v-model="filter.minCapacity" :min="0" :max="100" showButtons
                          buttonLayout="horizontal" :step="2" class="cap-input"
                          @input="onFilterChange" />
           </div>
           <label class="check-label">
             <Checkbox v-model="filter.hasVideo" binary @change="onFilterChange" />
-            화상회의 가능
+            {{ t('LBL_ROOM_HAS_VIDEO') }}
           </label>
         </div>
         <div class="room-list">
-          <div v-if="loadingRooms" class="loading">불러오는 중...</div>
-          <div v-else-if="!rooms.length" class="empty">조건에 맞는 회의실이 없습니다</div>
+          <div v-if="loadingRooms" class="loading">{{ t('LBL_ROOM_LOADING') }}</div>
+          <div v-else-if="!rooms.length" class="empty">{{ t('LBL_ROOM_EMPTY') }}</div>
           <RoomCard v-for="r in rooms" :key="r.roomId" :room="r"
                     :selected="selectedRoom?.roomId === r.roomId"
                     @select="onRoomSelect" />
         </div>
-        <Button label="예약하기" icon="pi pi-plus" class="reserve-btn"
+        <Button :label="t('BTN_BOOK_ROOM')" icon="pi pi-plus" class="reserve-btn"
                 :disabled="!selectedRoom" @click="openDialogForCurrentRoom" />
       </aside>
 
@@ -34,9 +34,9 @@
         <div class="cal-head">
           <strong v-if="selectedRoom">
             {{ selectedRoom.roomName }}
-            <span class="muted">정원 {{ selectedRoom.capacity }}명</span>
+            <span class="muted">{{ t('LBL_ROOM_CAPACITY_SUFFIX').replace('{n}', String(selectedRoom.capacity)) }}</span>
           </strong>
-          <span v-else class="muted">회의실을 선택하면 예약 현황이 표시됩니다</span>
+          <span v-else class="muted">{{ t('LBL_ROOM_SELECT_HINT') }}</span>
         </div>
         <FullCalendar ref="calRef" :options="calendarOptions" />
       </section>
@@ -64,10 +64,12 @@ import BookingDialog from '@/components/room/BookingDialog.vue';
 import { useRoom, type Room, type Booking } from '@/composables/useRoom';
 import { useMessage } from '@/composables/useMessage';
 import { useAuthStore } from '@/store/auth';
+import { useLabel } from '@/composables/useLabel';
 
 const room = useRoom();
 const { error: showError, success } = useMessage();
 const auth = useAuthStore();
+const { t } = useLabel();
 
 const calRef = ref<InstanceType<typeof FullCalendar> | null>(null);
 

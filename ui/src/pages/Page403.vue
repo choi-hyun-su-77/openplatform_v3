@@ -1,14 +1,17 @@
 <template>
   <div class="forbidden-page">
     <i class="pi pi-lock" style="font-size: 4rem; color: var(--p-text-muted-color)" />
-    <h2>접근 권한이 없습니다</h2>
-    <p>이 페이지에 대한 접근 권한이 없습니다. 관리자에게 문의하세요.</p>
-    <Button label="대시보드로 이동" icon="pi pi-home" @click="$router.push('/dashboard')" />
+    <h2>{{ t('LBL_FORBIDDEN') }}</h2>
+    <p>{{ t('LBL_FORBIDDEN_DETAIL') }}</p>
+    <Button :label="t('BTN_GO_DASHBOARD')" icon="pi pi-home" @click="$router.push('/dashboard')" />
   </div>
 </template>
 
 <script setup lang="ts">
 import Button from 'primevue/button';
+import { useLabel } from '@/composables/useLabel';
+
+const { t } = useLabel();
 </script>
 
 <style scoped>

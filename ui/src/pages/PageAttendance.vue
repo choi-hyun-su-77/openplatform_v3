@@ -12,9 +12,9 @@
 <template>
   <div class="page attendance-page">
     <div class="page-header">
-      <h2><i class="pi pi-clock" /> 근태</h2>
+      <h2><i class="pi pi-clock" /> {{ t('LBL_PAGE_ATTENDANCE') }}</h2>
       <div class="header-actions">
-        <Button label="새로고침" icon="pi pi-refresh" text @click="reload" />
+        <Button :label="t('BTN_REFRESH')" icon="pi pi-refresh" text @click="reload" />
       </div>
     </div>
 
@@ -25,23 +25,23 @@
         <div class="status-row" v-if="todayRow">
           <Tag :value="statusLabel(todayRow.status || 'NORMAL')" :severity="statusSeverity(todayRow.status || 'NORMAL')" />
           <span v-if="todayRow.checkInAt" class="t-info">
-            출근 <strong>{{ formatTime(todayRow.checkInAt) }}</strong>
+            {{ t('LBL_ATT_CHECK_IN_AT') }} <strong>{{ formatTime(todayRow.checkInAt) }}</strong>
           </span>
           <span v-if="todayRow.checkOutAt" class="t-info">
-            퇴근 <strong>{{ formatTime(todayRow.checkOutAt) }}</strong>
+            {{ t('LBL_ATT_CHECK_OUT_AT') }} <strong>{{ formatTime(todayRow.checkOutAt) }}</strong>
           </span>
           <span v-if="todayRow.workMinutes != null" class="t-info">
-            근무 <strong>{{ formatMinutes(todayRow.workMinutes) }}</strong>
+            {{ t('LBL_ATT_WORK_TIME') }} <strong>{{ formatMinutes(todayRow.workMinutes) }}</strong>
           </span>
         </div>
         <div v-else class="status-row">
-          <Tag value="미출근" severity="secondary" />
+          <Tag :value="t('STATUS_ATT_NOT_CHECKED')" severity="secondary" />
         </div>
       </div>
       <div class="right">
         <Button
           v-if="!hasCheckedIn"
-          label="출근"
+          :label="t('BTN_CHECK_IN')"
           icon="pi pi-sign-in"
           severity="success"
           size="large"
@@ -51,7 +51,7 @@
         />
         <Button
           v-else-if="!hasCheckedOut"
-          label="퇴근"
+          :label="t('BTN_CHECK_OUT')"
           icon="pi pi-sign-out"
           severity="info"
           size="large"
@@ -61,7 +61,7 @@
         />
         <Button
           v-else
-          label="완료"
+          :label="t('BTN_DONE')"
           icon="pi pi-check"
           size="large"
           class="big-btn"
@@ -71,18 +71,18 @@
     </section>
 
     <section class="month-card">
-      <h3>이번 달 출근 현황</h3>
+      <h3>{{ t('LBL_ATT_THIS_MONTH') }}</h3>
       <MonthlyCalendar
         v-model:yearMonth="yearMonth"
         :rows="monthRows"
         @selectDate="(d) => console.log('cell click', d)"
       />
       <div class="month-summary">
-        <div><span>출근일</span><strong>{{ stats.workDays }}일</strong></div>
-        <div><span>총 근무시간</span><strong>{{ formatMinutes(stats.totalMinutes) }}</strong></div>
-        <div><span>평균 근무</span><strong>{{ stats.workDays ? formatMinutes(Math.round(stats.totalMinutes / stats.workDays)) : '-' }}</strong></div>
-        <div><span>지각</span><strong>{{ stats.lateDays }}일</strong></div>
-        <div><span>휴가</span><strong>{{ stats.leaveDays }}일</strong></div>
+        <div><span>{{ t('LBL_ATT_WORK_DAYS') }}</span><strong>{{ stats.workDays }}{{ t('LBL_ATT_DAY_SUFFIX') }}</strong></div>
+        <div><span>{{ t('LBL_ATT_TOTAL_TIME') }}</span><strong>{{ formatMinutes(stats.totalMinutes) }}</strong></div>
+        <div><span>{{ t('LBL_ATT_AVG_TIME') }}</span><strong>{{ stats.workDays ? formatMinutes(Math.round(stats.totalMinutes / stats.workDays)) : '-' }}</strong></div>
+        <div><span>{{ t('LBL_ATT_LATE_DAYS') }}</span><strong>{{ stats.lateDays }}{{ t('LBL_ATT_DAY_SUFFIX') }}</strong></div>
+        <div><span>{{ t('LBL_ATT_LEAVE_DAYS') }}</span><strong>{{ stats.leaveDays }}{{ t('LBL_ATT_DAY_SUFFIX') }}</strong></div>
       </div>
     </section>
   </div>
@@ -94,8 +94,10 @@ import Button from 'primevue/button';
 import Tag from 'primevue/tag';
 import MonthlyCalendar from '@/components/attendance/MonthlyCalendar.vue';
 import { useAttendance, type AttendanceRow } from '@/composables/useAttendance';
+import { useLabel } from '@/composables/useLabel';
 
 const attendance = useAttendance();
+const { t } = useLabel();
 
 const todayRow = ref<AttendanceRow | null>(null);
 const monthRows = ref<AttendanceRow[]>([]);
@@ -135,15 +137,7 @@ const stats = computed(() => {
 });
 
 function statusLabel(s: string) {
-  switch (s) {
-    case 'NORMAL':  return '정상';
-    case 'LATE':    return '지각';
-    case 'EARLY':   return '조퇴';
-    case 'ABSENT':  return '결근';
-    case 'HOLIDAY': return '공휴일';
-    case 'LEAVE':   return '휴가';
-    default: return s;
-  }
+  return t('STATUS_ATT_' + s, s);
 }
 function statusSeverity(s: string): any {
   switch (s) {
@@ -199,7 +193,7 @@ async function onCheckIn() {
     }
     await reload();
   } catch (e: any) {
-    alert('출근 실패: ' + (e?.response?.data?.message || e.message));
+    alert(t('MSG_ATT_CHECK_IN_FAILED').replace('{err}', (e?.response?.data?.message || e.message || '')));
   } finally {
     busy.value = false;
   }
@@ -210,7 +204,7 @@ async function onCheckOut() {
     await attendance.checkOut();
     await reload();
   } catch (e: any) {
-    alert('퇴근 실패: ' + (e?.response?.data?.message || e.message));
+    alert(t('MSG_ATT_CHECK_OUT_FAILED').replace('{err}', (e?.response?.data?.message || e.message || '')));
   } finally {
     busy.value = false;
   }

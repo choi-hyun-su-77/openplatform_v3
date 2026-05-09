@@ -1,32 +1,32 @@
 <template>
-  <Dialog v-model:visible="visible" :header="isEdit ? '게시글 수정' : '새 글 작성'" modal
+  <Dialog v-model:visible="visible" :header="isEdit ? t('LBL_BOARD_FORM_EDIT') : t('LBL_BOARD_FORM_NEW')" modal
           :style="{ width: '640px' }" :closable="true" :draggable="false">
     <div class="form-grid">
       <div class="field">
-        <label>게시판</label>
+        <label>{{ t('LBL_BOARD_BOARD') }}</label>
         <Select v-model="form.boardType" :options="boardTypes" optionLabel="label" optionValue="code"
-                placeholder="게시판 선택" :disabled="isEdit" />
+                :placeholder="t('PH_BOARD_SELECT')" :disabled="isEdit" />
       </div>
       <div class="field">
-        <label>제목 <span class="required">*</span></label>
-        <InputText v-model="form.title" placeholder="제목을 입력하세요" class="w-full" />
+        <label>{{ t('LBL_BOARD_TITLE_REQ') }}</label>
+        <InputText v-model="form.title" :placeholder="t('PH_POST_TITLE')" class="w-full" />
       </div>
       <div class="field">
-        <label>내용</label>
-        <Textarea v-model="form.content" :rows="10" class="w-full" placeholder="내용을 입력하세요" />
+        <label>{{ t('LBL_BOARD_CONTENT') }}</label>
+        <Textarea v-model="form.content" :rows="10" class="w-full" :placeholder="t('PH_POST_CONTENT')" />
       </div>
       <div class="field">
-        <label><input type="checkbox" v-model="form.isPinned" true-value="Y" false-value="N" /> 상단 고정</label>
+        <label><input type="checkbox" v-model="form.isPinned" true-value="Y" false-value="N" /> {{ t('LBL_BOARD_PIN') }}</label>
       </div>
       <div class="field" v-if="isEdit && form.postId">
-        <label>첨부 파일</label>
+        <label>{{ t('LBL_BOARD_ATTACHMENT') }}</label>
         <FileUploadPanel :files="attachments" :prefix="`board/${form.postId}/`"
                          @uploaded="onFileUploaded" @remove="onFileRemove" />
       </div>
     </div>
     <template #footer>
-      <Button label="취소" severity="secondary" @click="visible = false" />
-      <Button :label="isEdit ? '수정' : '등록'" icon="pi pi-check" @click="handleSave" :loading="saving" />
+      <Button :label="t('BTN_CANCEL')" severity="secondary" @click="visible = false" />
+      <Button :label="isEdit ? t('BTN_UPDATE') : t('BTN_REGISTER')" icon="pi pi-check" @click="handleSave" :loading="saving" />
     </template>
   </Dialog>
 </template>
@@ -40,20 +40,22 @@ import InputText from 'primevue/inputtext';
 import Textarea from 'primevue/textarea';
 import Select from 'primevue/select';
 import { useMessage } from '@/composables/useMessage';
+import { useLabel } from '@/composables/useLabel';
 import FileUploadPanel, { type FileItem } from '@/components/common/FileUploadPanel.vue';
 
 const props = defineProps<{ editData?: any }>();
 const emit = defineEmits<{ saved: [] }>();
 const visible = defineModel<boolean>('visible', { default: false });
 const { success, error } = useMessage();
+const { t } = useLabel();
 
-const boardTypes = [
-  { code: 'NOTICE', label: '공지사항' },
-  { code: 'GENERAL', label: '일반' },
-  { code: 'FREE', label: '자유게시판' },
-  { code: 'DEPT', label: '부서게시판' },
-  { code: 'ARCHIVE', label: '자료실' }
-];
+const boardTypes = computed(() => [
+  { code: 'NOTICE', label: t('LBL_BOARD_TYPE_NOTICE') },
+  { code: 'GENERAL', label: t('LBL_BOARD_TYPE_GENERAL') },
+  { code: 'FREE', label: t('LBL_BOARD_TYPE_FREE') },
+  { code: 'DEPT', label: t('LBL_BOARD_TYPE_DEPT') },
+  { code: 'ARCHIVE', label: t('LBL_BOARD_TYPE_ARCHIVE') }
+]);
 
 const isEdit = computed(() => !!props.editData?.postId);
 const saving = ref(false);
@@ -96,7 +98,7 @@ watch(() => [visible.value, props.editData], ([v]) => {
 });
 
 async function handleSave() {
-  if (!form.value.title.trim()) { error('제목을 입력하세요'); return; }
+  if (!form.value.title.trim()) { error(t('MSG_BOARD_TITLE_REQ')); return; }
   saving.value = true;
   try {
     const rowType = isEdit.value ? 'U' : 'C';
@@ -108,11 +110,11 @@ async function handleSave() {
         }
       }
     });
-    success(isEdit.value ? '게시글이 수정되었습니다' : '게시글이 등록되었습니다');
+    success(isEdit.value ? t('MSG_BOARD_UPDATE_DONE') : t('MSG_BOARD_SAVE_DONE'));
     visible.value = false;
     emit('saved');
   } catch (e) {
-    error('저장에 실패했습니다');
+    error(t('MSG_BOARD_SAVE_FAILED'));
   } finally {
     saving.value = false;
   }

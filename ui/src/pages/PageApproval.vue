@@ -9,16 +9,16 @@
 <template>
   <div class="page approval-page">
     <div class="page-header">
-      <h2>전자결재</h2>
+      <h2>{{ t('LBL_PAGE_APPROVAL') }}</h2>
       <div class="header-actions">
-        <Button label="새 문서 상신" icon="pi pi-plus" @click="onNew" severity="primary" />
-        <Button label="새로고침" icon="pi pi-refresh" text @click="reload" />
+        <Button :label="t('BTN_NEW_DOC')" icon="pi pi-plus" @click="onNew" severity="primary" />
+        <Button :label="t('BTN_REFRESH')" icon="pi pi-refresh" text @click="reload" />
       </div>
     </div>
 
     <div class="approval-layout">
       <aside class="inbox-nav">
-        <div class="nav-title">결재함</div>
+        <div class="nav-title">{{ t('LBL_APPROVAL_BOXES') }}</div>
         <ul>
           <li
             v-for="b in boxes"
@@ -27,7 +27,7 @@
             @click="selectBox(b.code)"
           >
             <i :class="b.icon" />
-            <span>{{ b.label }}</span>
+            <span>{{ t('BOX_' + b.code) }}</span>
             <span v-if="b.code === activeBox" class="count">{{ documents.length }}</span>
           </li>
         </ul>
@@ -35,7 +35,7 @@
 
       <section class="inbox-list">
         <div class="search-bar">
-          <InputText v-model="keyword" placeholder="제목·기안자 검색" @keyup.enter="reload" />
+          <InputText v-model="keyword" :placeholder="t('PH_APPROVAL_SEARCH')" @keyup.enter="reload" />
           <Button icon="pi pi-search" @click="reload" text />
         </div>
 
@@ -52,23 +52,23 @@
           class="approval-table"
         >
           <template #empty>
-            <div class="empty">결재함이 비어 있습니다</div>
+            <div class="empty">{{ t('LBL_APPROVAL_INBOX_EMPTY') }}</div>
           </template>
-          <Column field="docId" header="번호" style="width:80px" />
-          <Column field="docTitle" header="제목">
+          <Column field="docId" :header="t('COL_APPROVAL_NO')" style="width:80px" />
+          <Column field="docTitle" :header="t('COL_APPROVAL_TITLE')">
             <template #body="{ data }">
               <strong>{{ data.docTitle }}</strong>
               <Tag v-if="data.formCode" :value="formCodeLabel(data.formCode)" severity="secondary" class="ml-2" />
             </template>
           </Column>
-          <Column field="drafterName" header="기안자" style="width:120px" />
-          <Column field="drafterDept" header="부서" style="width:140px" />
-          <Column field="status" header="상태" style="width:110px">
+          <Column field="drafterName" :header="t('COL_APPROVAL_DRAFTER')" style="width:120px" />
+          <Column field="drafterDept" :header="t('COL_APPROVAL_DEPT')" style="width:140px" />
+          <Column field="status" :header="t('COL_APPROVAL_STATUS')" style="width:110px">
             <template #body="{ data }">
               <Tag :value="statusLabel(data.status)" :severity="statusSeverity(data.status)" />
             </template>
           </Column>
-          <Column field="createdAt" header="기안일" style="width:160px">
+          <Column field="createdAt" :header="t('COL_APPROVAL_DRAFT_AT')" style="width:160px">
             <template #body="{ data }">{{ formatDate(data.createdAt) }}</template>
           </Column>
         </DataTable>
@@ -98,19 +98,22 @@ import InputText from 'primevue/inputtext';
 import ApprovalDetailDialog from '@/components/approval/ApprovalDetailDialog.vue';
 import ApprovalSubmitDialog from '@/components/approval/ApprovalSubmitDialog.vue';
 import { useApproval } from '@/composables/useApproval';
+import { useLabel } from '@/composables/useLabel';
 
 const approval = useApproval();
+const { t } = useLabel();
 
+// box code 는 STATUS-prefix 가 아닌 BOX_DRAFT/BOX_PENDING 등으로 t() 호출 (CC_BOX/DEPT_BOX 는 BOX_CC/BOX_DEPT)
 const boxes = [
-  { code: 'DRAFT',       label: '임시저장', icon: 'pi pi-pencil'   },
-  { code: 'MY_DOCS',     label: '기안함',   icon: 'pi pi-folder'   },
-  { code: 'PENDING',     label: '대기함',   icon: 'pi pi-clock'    },
-  { code: 'IN_PROGRESS', label: '진행함',   icon: 'pi pi-sync'     },
-  { code: 'COMPLETED',   label: '완료함',   icon: 'pi pi-check'    },
-  { code: 'REJECTED',    label: '반려함',   icon: 'pi pi-times'    },
-  { code: 'RECEIVED',    label: '수신함',   icon: 'pi pi-inbox'    },
-  { code: 'CC_BOX',      label: '참조함',   icon: 'pi pi-eye'      },
-  { code: 'DEPT_BOX',    label: '부서함',   icon: 'pi pi-building' }
+  { code: 'DRAFT',       icon: 'pi pi-pencil'   },
+  { code: 'MY_DOCS',     icon: 'pi pi-folder'   },
+  { code: 'PENDING',     icon: 'pi pi-clock'    },
+  { code: 'IN_PROGRESS', icon: 'pi pi-sync'     },
+  { code: 'COMPLETED',   icon: 'pi pi-check'    },
+  { code: 'REJECTED',    icon: 'pi pi-times'    },
+  { code: 'RECEIVED',    icon: 'pi pi-inbox'    },
+  { code: 'CC_BOX',      icon: 'pi pi-eye'      },
+  { code: 'DEPT_BOX',    icon: 'pi pi-building' }
 ];
 
 const activeBox = ref('PENDING');
@@ -158,10 +161,7 @@ onMounted(() => selectBox('PENDING'));
 
 // ---- helpers (DetailDialog 와 동일)
 function statusLabel(s: string): string {
-  return ({
-    DRAFT: '임시', PENDING: '대기', IN_PROGRESS: '진행',
-    APPROVED: '완료', REJECTED: '반려'
-  } as Record<string, string>)[s] || s;
+  return t('STATUS_APP_DOC_' + s, s);
 }
 function statusSeverity(s: string): any {
   return ({
@@ -170,10 +170,7 @@ function statusSeverity(s: string): any {
   } as Record<string, string>)[s] || 'secondary';
 }
 function formCodeLabel(c: string): string {
-  return ({
-    LEAVE: '휴가', EXPENSE: '지출', PURCHASE: '구매',
-    BIZTRIP: '출장', CONTRACT: '계약', HR: '인사', IT: 'IT'
-  } as Record<string, string>)[c] || c;
+  return t('FORM_' + c, c);
 }
 function formatDate(iso: string): string {
   if (!iso) return '';

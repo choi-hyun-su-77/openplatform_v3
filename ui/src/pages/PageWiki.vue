@@ -1,6 +1,6 @@
 <template>
   <div class="page">
-    <h2>위키 (Wiki.js)</h2>
+    <h2>{{ t('LBL_PAGE_WIKI') }} (Wiki.js)</h2>
     <div class="sso-panel">
       <div class="icon">
         <i class="pi pi-book" />
@@ -17,6 +17,9 @@
 
 <script setup lang="ts">
 import Button from 'primevue/button';
+import { useLabel } from '@/composables/useLabel';
+
+const { t } = useLabel();
 const base = import.meta.env.VITE_WIKI_URL || 'http://localhost:19001';
 const ssoUrl = `${base}/login`;
 function open() { window.open(ssoUrl, '_blank'); }

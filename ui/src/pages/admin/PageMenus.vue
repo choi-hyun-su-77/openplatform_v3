@@ -1,52 +1,52 @@
 <template>
   <div class="page">
-    <h2>메뉴 / 권한 관리</h2>
+    <h2>{{ t('LBL_PAGE_ADMIN_MENUS') }}</h2>
     <div class="layout">
       <aside class="tree-panel">
         <div class="tree-toolbar">
-          <Button label="새 메뉴" icon="pi pi-plus" size="small" @click="addNew" />
-          <Button label="새로고침" icon="pi pi-refresh" size="small" severity="secondary" @click="load" />
+          <Button :label="t('BTN_NEW_MENU')" icon="pi pi-plus" size="small" @click="addNew" />
+          <Button :label="t('BTN_REFRESH')" icon="pi pi-refresh" size="small" severity="secondary" @click="load" />
         </div>
         <Tree :value="treeNodes" selectionMode="single" v-model:selectionKeys="selectedKey"
               @node-select="onNodeSelect" :loading="loading" />
       </aside>
 
       <section class="right-panel">
-        <h3>{{ isNew ? '새 메뉴' : (editing.menuId ? '메뉴 편집' : '메뉴를 선택하세요') }}</h3>
+        <h3>{{ isNew ? t('LBL_MENU_NEW') : (editing.menuId ? t('LBL_MENU_EDIT') : t('LBL_MENU_SELECT_HINT')) }}</h3>
         <div class="form-grid" v-if="isNew || editing.menuId">
-          <label>메뉴 ID *</label>
+          <label>{{ t('LBL_MENU_ID_REQ') }}</label>
           <InputText v-model="editing.menuId" :disabled="!isNew" />
-          <label>메뉴명 *</label>
+          <label>{{ t('LBL_MENU_NAME_REQ') }}</label>
           <InputText v-model="editing.menuName" />
-          <label>경로</label>
-          <InputText v-model="editing.menuPath" placeholder="/example" />
-          <label>상위 메뉴</label>
+          <label>{{ t('LBL_MENU_PATH') }}</label>
+          <InputText v-model="editing.menuPath" :placeholder="t('PH_MENU_PATH')" />
+          <label>{{ t('LBL_MENU_PARENT') }}</label>
           <Select v-model="editing.parentMenuId" :options="parentOptions"
-                  optionLabel="menuName" optionValue="menuId" placeholder="(루트)" showClear />
-          <label>레벨</label>
+                  optionLabel="menuName" optionValue="menuId" :placeholder="t('PH_TREE_ROOT_NONE')" showClear />
+          <label>{{ t('LBL_MENU_LEVEL') }}</label>
           <InputNumber v-model="editing.menuLevel" :min="1" :max="9" />
-          <label>정렬순서</label>
+          <label>{{ t('LBL_MENU_SORT') }}</label>
           <InputNumber v-model="editing.sortOrder" :min="0" />
-          <label>아이콘</label>
-          <InputText v-model="editing.icon" placeholder="pi pi-folder" />
-          <label>사용</label>
+          <label>{{ t('LBL_MENU_ICON') }}</label>
+          <InputText v-model="editing.icon" :placeholder="t('PH_MENU_ICON')" />
+          <label>{{ t('LBL_MENU_USE') }}</label>
           <Select v-model="editing.useYn" :options="yesNoOptions" optionLabel="label" optionValue="code" />
         </div>
         <div class="actions" v-if="isNew || editing.menuId">
-          <Button label="저장" icon="pi pi-check" @click="onSave" :loading="saving" />
-          <Button v-if="!isNew" label="삭제" icon="pi pi-trash" severity="danger" @click="onDelete" />
-          <Button label="취소" severity="secondary" text @click="cancel" />
+          <Button :label="t('BTN_SAVE')" icon="pi pi-check" @click="onSave" :loading="saving" />
+          <Button v-if="!isNew" :label="t('BTN_DELETE')" icon="pi pi-trash" severity="danger" @click="onDelete" />
+          <Button :label="t('BTN_CANCEL')" severity="secondary" text @click="cancel" />
         </div>
 
-        <h3 style="margin-top:1.5rem">권한 매트릭스</h3>
+        <h3 style="margin-top:1.5rem">{{ t('LBL_MENU_PERM_MATRIX') }}</h3>
         <div class="matrix-toolbar">
-          <span class="muted">선택 메뉴: {{ editing.menuId ? `${editing.menuName} (${editing.menuId})` : '(전체 메뉴)' }}</span>
-          <Button label="권한 저장" icon="pi pi-save" size="small" @click="savePermissions" :loading="permSaving" />
+          <span class="muted">{{ t('LBL_MENU_PERM_SELECTED') }}: {{ editing.menuId ? `${editing.menuName} (${editing.menuId})` : t('LBL_MENU_PERM_ALL') }}</span>
+          <Button :label="t('BTN_SAVE_PERM')" icon="pi pi-save" size="small" @click="savePermissions" :loading="permSaving" />
         </div>
         <DataTable :value="filteredPermissions" responsiveLayout="scroll" size="small">
-          <Column field="roleId" header="역할" style="width:120px" />
-          <Column field="menuId" header="메뉴" style="width:140px" />
-          <Column field="menuName" header="메뉴명" style="min-width:120px" />
+          <Column field="roleId" :header="t('COL_MENU_ROLE')" style="width:120px" />
+          <Column field="menuId" :header="t('COL_MENU_ID')" style="width:140px" />
+          <Column field="menuName" :header="t('COL_MENU_NAME')" style="min-width:120px" />
           <Column header="R" style="width:50px">
             <template #body="{ data }"><Checkbox v-model="data.canRead" :binary="true" /></template>
           </Column>
@@ -73,6 +73,9 @@
 
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted } from 'vue'
+import { useLabel } from '@/composables/useLabel'
+
+const { t } = useLabel()
 import Tree from 'primevue/tree'
 import Button from 'primevue/button'
 import InputText from 'primevue/inputtext'
@@ -108,10 +111,10 @@ const editing = reactive<AdminMenu>({
   useYn: 'Y'
 })
 
-const yesNoOptions = [
-  { code: 'Y', label: '사용' },
-  { code: 'N', label: '미사용' }
-]
+const yesNoOptions = computed(() => [
+  { code: 'Y', label: t('STATUS_USE_Y') },
+  { code: 'N', label: t('STATUS_USE_N') }
+])
 
 const parentOptions = computed(() => flatMenus.value.filter(m => m.menuId !== editing.menuId))
 
@@ -139,7 +142,7 @@ async function load() {
     roles.value = data.roles
     permissions.value = data.permissions.map(p => ({ ...p }))
   } catch (e: any) {
-    toast.add({ severity: 'error', summary: '조회 실패', detail: e.message || String(e), life: 3000 })
+    toast.add({ severity: 'error', summary: t('MSG_LOAD_FAILED'), detail: e.message || String(e), life: 3000 })
   } finally {
     loading.value = false
   }
@@ -182,17 +185,17 @@ function cancel() {
 
 async function onSave() {
   if (!editing.menuId || !editing.menuName) {
-    toast.add({ severity: 'warn', summary: '입력 필요', detail: '메뉴ID/메뉴명은 필수.', life: 3000 })
+    toast.add({ severity: 'warn', summary: t('MSG_INPUT_REQUIRED'), detail: t('MSG_MENU_REQ'), life: 3000 })
     return
   }
   saving.value = true
   try {
     await admin.menuSave({ ...editing })
-    toast.add({ severity: 'success', summary: '저장 완료', life: 2000 })
+    toast.add({ severity: 'success', summary: t('MSG_SAVE_DONE'), life: 2000 })
     isNew.value = false
     await load()
   } catch (e: any) {
-    toast.add({ severity: 'error', summary: '저장 실패', detail: e.message || String(e), life: 4000 })
+    toast.add({ severity: 'error', summary: t('MSG_SAVE_FAILED'), detail: e.message || String(e), life: 4000 })
   } finally {
     saving.value = false
   }
@@ -200,14 +203,14 @@ async function onSave() {
 
 async function onDelete() {
   if (!editing.menuId) return
-  if (!confirm(`'${editing.menuName}' 메뉴를 삭제합니다.`)) return
+  if (!confirm(t('MSG_MENU_DELETE_CONFIRM').replace('{name}', editing.menuName || ''))) return
   try {
     await admin.menuDelete(editing.menuId)
-    toast.add({ severity: 'success', summary: '삭제 완료', life: 2000 })
+    toast.add({ severity: 'success', summary: t('MSG_DELETE_DONE'), life: 2000 })
     cancel()
     await load()
   } catch (e: any) {
-    toast.add({ severity: 'error', summary: '삭제 실패', detail: e.message || String(e), life: 4000 })
+    toast.add({ severity: 'error', summary: t('MSG_DELETE_FAILED'), detail: e.message || String(e), life: 4000 })
   }
 }
 
@@ -217,9 +220,9 @@ async function savePermissions() {
     // 화면에 보이는 모든 항목을 upsert (단순화)
     const rows = filteredPermissions.value
     await admin.permSave(rows as any)
-    toast.add({ severity: 'success', summary: '권한 저장됨', detail: `${rows.length}건`, life: 2000 })
+    toast.add({ severity: 'success', summary: t('MSG_MENU_PERM_SAVED'), detail: `${rows.length}`, life: 2000 })
   } catch (e: any) {
-    toast.add({ severity: 'error', summary: '저장 실패', detail: e.message || String(e), life: 4000 })
+    toast.add({ severity: 'error', summary: t('MSG_SAVE_FAILED'), detail: e.message || String(e), life: 4000 })
   } finally {
     permSaving.value = false
   }

@@ -1,10 +1,10 @@
 <template>
   <div class="login-page">
     <div class="login-card">
-      <h1>openplatform v3</h1>
-      <p>통합 그룹웨어 — Keycloak SSO</p>
-      <Button label="Keycloak으로 로그인" icon="pi pi-sign-in" @click="onLogin" :loading="loading" />
-      <p class="hint">admin / admin 또는 user1 / user1</p>
+      <h1>{{ t('LBL_LOGIN_TITLE') }}</h1>
+      <p>{{ t('LBL_LOGIN_SUBTITLE') }}</p>
+      <Button :label="t('BTN_LOGIN_KC')" icon="pi pi-sign-in" @click="onLogin" :loading="loading" />
+      <p class="hint">{{ t('LBL_LOGIN_HINT') }}</p>
     </div>
   </div>
 </template>
@@ -14,10 +14,12 @@ import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import Button from 'primevue/button';
 import { useAuthStore } from '@/store/auth';
+import { useLabel } from '@/composables/useLabel';
 
 const router = useRouter();
 const auth = useAuthStore();
 const loading = ref(false);
+const { t } = useLabel();
 
 onMounted(() => {
   if (auth.isAuthenticated) router.replace('/dashboard');

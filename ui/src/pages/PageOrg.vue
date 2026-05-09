@@ -1,12 +1,12 @@
 <template>
   <div class="page">
-    <h2>조직도</h2>
+    <h2>{{ t('LBL_PAGE_ORG') }}</h2>
     <div class="org-layout">
       <aside class="dept-tree">
         <Tree :value="deptTree" selectionMode="single" v-model:selectionKeys="selectedKey" @node-select="onDeptSelect" />
       </aside>
       <section class="employee-list">
-        <InputText v-model="keyword" placeholder="이름/사번/이메일 검색" class="search-input" />
+        <InputText v-model="keyword" :placeholder="t('PH_USER_SEARCH')" class="search-input" />
         <div class="cards" v-if="employees.length">
           <div v-for="emp in employees" :key="emp.employeeId" class="emp-card" @click="onCardClick(emp)">
             <div class="avatar">{{ emp.employeeName?.[0] || '?' }}</div>
@@ -34,6 +34,9 @@ import axios from 'axios';
 import Tree from 'primevue/tree';
 import InputText from 'primevue/inputtext';
 import EmployeeDetailDialog from '@/components/org/EmployeeDetailDialog.vue';
+import { useLabel } from '@/composables/useLabel';
+
+const { t } = useLabel();
 
 const deptTree = ref<any[]>([]);
 const selectedKey = ref<any>({});

@@ -11,23 +11,23 @@
 <template>
   <div class="page leave-page">
     <div class="page-header">
-      <h2><i class="pi pi-calendar-plus" /> 연차 / 휴가</h2>
+      <h2><i class="pi pi-calendar-plus" /> {{ t('LBL_PAGE_LEAVE') }}</h2>
       <div class="header-actions">
-        <Button label="휴가 신청" icon="pi pi-plus" severity="primary" @click="openSubmit" />
-        <Button label="새로고침" icon="pi pi-refresh" text @click="reload" />
+        <Button :label="t('BTN_APPLY_LEAVE')" icon="pi pi-plus" severity="primary" @click="openSubmit" />
+        <Button :label="t('BTN_REFRESH')" icon="pi pi-refresh" text @click="reload" />
       </div>
     </div>
 
     <section class="top-row">
       <LeaveBalanceCard :balance="balance" />
       <div class="year-picker-wrap">
-        <label>조회 연도</label>
+        <label>{{ t('LBL_LEAVE_YEAR_SELECT') }}</label>
         <Dropdown v-model="year" :options="yearOptions" class="year-picker" />
       </div>
     </section>
 
     <section class="history-card">
-      <h3>휴가 신청 이력</h3>
+      <h3>{{ t('LBL_LEAVE_HISTORY') }}</h3>
       <DataTable
         :value="history"
         :loading="loading"
@@ -39,33 +39,33 @@
         :rowHover="true"
       >
         <template #empty>
-          <div class="empty">등록된 휴가 신청이 없습니다</div>
+          <div class="empty">{{ t('LBL_LEAVE_EMPTY') }}</div>
         </template>
-        <Column field="requestId" header="번호" style="width:80px" />
-        <Column field="leaveType" header="유형" style="width:120px">
+        <Column field="requestId" :header="t('COL_LEAVE_NO')" style="width:80px" />
+        <Column field="leaveType" :header="t('COL_LEAVE_TYPE')" style="width:120px">
           <template #body="{ data }">
             <Tag :value="leaveTypeLabel(data.leaveType)" :severity="leaveTypeSeverity(data.leaveType)" />
           </template>
         </Column>
-        <Column header="기간" style="width:200px">
+        <Column :header="t('COL_LEAVE_PERIOD')" style="width:200px">
           <template #body="{ data }">
             {{ formatDate(data.fromDate) }} ~ {{ formatDate(data.toDate) }}
           </template>
         </Column>
-        <Column field="days" header="일수" style="width:80px">
-          <template #body="{ data }">{{ formatDays(data.days) }}일</template>
+        <Column field="days" :header="t('COL_LEAVE_DAYS')" style="width:80px">
+          <template #body="{ data }">{{ formatDays(data.days) }}{{ t('LBL_ATT_DAY_SUFFIX') }}</template>
         </Column>
-        <Column field="reason" header="사유">
+        <Column field="reason" :header="t('COL_LEAVE_REASON')">
           <template #body="{ data }">
             <span class="reason">{{ data.reason || '-' }}</span>
           </template>
         </Column>
-        <Column field="status" header="상태" style="width:110px">
+        <Column field="status" :header="t('COL_LEAVE_STATUS')" style="width:110px">
           <template #body="{ data }">
             <Tag :value="statusLabel(data.status)" :severity="statusSeverity(data.status)" />
           </template>
         </Column>
-        <Column field="createdAt" header="신청일" style="width:160px">
+        <Column field="createdAt" :header="t('COL_LEAVE_APPLIED_AT')" style="width:160px">
           <template #body="{ data }">{{ formatDateTime(data.createdAt) }}</template>
         </Column>
       </DataTable>
@@ -89,8 +89,10 @@ import Dropdown from 'primevue/dropdown';
 import LeaveBalanceCard from '@/components/leave/LeaveBalanceCard.vue';
 import ApprovalSubmitDialog from '@/components/approval/ApprovalSubmitDialog.vue';
 import { useLeave, type LeaveBalanceRow, type LeaveRequestRow } from '@/composables/useLeave';
+import { useLabel } from '@/composables/useLabel';
 
 const leave = useLeave();
+const { t } = useLabel();
 
 const year = ref<number>(new Date().getFullYear());
 const yearOptions = computed(() => {
@@ -134,19 +136,11 @@ async function onSubmitted(_docId: number) {
   await reload();
 }
 
-function leaveTypeLabel(t: string) {
-  switch (t) {
-    case 'ANNUAL':  return '연차';
-    case 'HALF_AM': return '오전반차';
-    case 'HALF_PM': return '오후반차';
-    case 'SICK':    return '병가';
-    case 'FAMILY':  return '경조사';
-    case 'UNPAID':  return '무급휴가';
-    default: return t;
-  }
+function leaveTypeLabel(lt: string) {
+  return t('LEAVE_TYPE_' + lt, lt);
 }
-function leaveTypeSeverity(t: string): any {
-  switch (t) {
+function leaveTypeSeverity(lt: string): any {
+  switch (lt) {
     case 'ANNUAL':  return 'info';
     case 'HALF_AM':
     case 'HALF_PM': return 'secondary';
@@ -158,13 +152,7 @@ function leaveTypeSeverity(t: string): any {
 }
 
 function statusLabel(s: string) {
-  switch (s) {
-    case 'PENDING':   return '결재중';
-    case 'APPROVED':  return '승인';
-    case 'REJECTED':  return '반려';
-    case 'CANCELLED': return '취소';
-    default: return s;
-  }
+  return t('STATUS_LEAVE_' + s, s);
 }
 function statusSeverity(s: string): any {
   switch (s) {

@@ -24,7 +24,7 @@
     :closable="true"
     :draggable="false"
   >
-    <div v-if="loading" class="loading">불러오는 중...</div>
+    <div v-if="loading" class="loading">{{ t('LBL_APPROVAL_PREVIEW_LOADING') }}</div>
 
     <div v-else-if="doc" class="detail-body">
       <div class="meta-bar">
@@ -37,22 +37,22 @@
       </div>
 
       <TabView>
-        <TabPanel header="내용" value="content">
+        <TabPanel :header="t('LBL_APPROVAL_CONTENT')" value="content">
           <h3 class="doc-title">{{ doc.docTitle }}</h3>
           <div class="doc-content" v-html="renderedContent"></div>
         </TabPanel>
-        <TabPanel header="결재선" value="line">
+        <TabPanel :header="t('LBL_APPROVAL_LINE')" value="line">
           <ApprovalLineTimeline :lines="lines" />
         </TabPanel>
-        <TabPanel header="첨부" value="attach">
+        <TabPanel :header="t('LBL_ATTACHMENT')" value="attach">
           <ApprovalAttachmentList
             :doc-id="doc.docId"
             :editable="canEditAttachments"
             @changed="reload"
           />
         </TabPanel>
-        <TabPanel header="이력" value="history">
-          <div v-if="!history.length" class="empty">이력이 없습니다</div>
+        <TabPanel :header="t('LBL_HISTORY')" value="history">
+          <div v-if="!history.length" class="empty">{{ t('LBL_NO_DATA') }}</div>
           <ul v-else class="history-list">
             <li v-for="h in history" :key="h.historyId">
               <Tag :value="actionLabel(h.action)" :severity="actionSeverity(h.action)" />
@@ -65,7 +65,7 @@
       </TabView>
     </div>
 
-    <div v-else class="empty">문서 정보가 없습니다</div>
+    <div v-else class="empty">{{ t('LBL_NO_DATA') }}</div>
 
     <template #footer>
       <ApprovalActionBar
@@ -89,6 +89,9 @@ import ApprovalActionBar from './ApprovalActionBar.vue';
 import ApprovalAttachmentList from './ApprovalAttachmentList.vue';
 import { useApproval } from '@/composables/useApproval';
 import { useAuthStore } from '@/store/auth';
+import { useLabel } from '@/composables/useLabel';
+
+const { t } = useLabel();
 
 const props = defineProps<{ visible: boolean; docId: number | null }>();
 const emit = defineEmits<{
@@ -121,7 +124,7 @@ const canEditAttachments = computed(() =>
   (doc.value.status === 'DRAFT' || doc.value.status === 'REJECTED')
 );
 
-const dialogHeader = computed(() => doc.value ? `결재 문서 #${doc.value.docId}` : '결재 문서');
+const dialogHeader = computed(() => doc.value ? `${t('LBL_APPROVAL_DETAIL_HEADER')} #${doc.value.docId}` : t('LBL_APPROVAL_DETAIL_HEADER'));
 
 const renderedContent = computed(() => {
   // 본문이 HTML 이거나 마크다운이거나 plain text. 지금은 단순 변환.
@@ -157,10 +160,7 @@ function onActionChanged() {
 
 // ---- helpers
 function statusLabel(s: string): string {
-  return ({
-    DRAFT: '임시저장', PENDING: '대기', IN_PROGRESS: '진행중',
-    APPROVED: '승인완료', REJECTED: '반려'
-  } as Record<string, string>)[s] || s;
+  return t('STATUS_APP_DOC_' + s, s);
 }
 function statusSeverity(s: string): any {
   return ({
@@ -169,10 +169,12 @@ function statusSeverity(s: string): any {
   } as Record<string, string>)[s] || 'secondary';
 }
 function actionLabel(a: string): string {
-  return ({
-    SUBMIT: '상신', APPROVE: '승인', REJECT: '반려',
-    WITHDRAW: '회수', RESUBMIT: '재상신', DELEGATE: '대결'
-  } as Record<string, string>)[a] || a;
+  // SUBMIT/APPROVE/REJECT/WITHDRAW/RESUBMIT/DELEGATE → BTN_* 라벨 재사용
+  const map: Record<string, string> = {
+    SUBMIT: 'BTN_SUBMIT_DOC', APPROVE: 'BTN_APPROVE', REJECT: 'BTN_REJECT',
+    WITHDRAW: 'BTN_WITHDRAW', RESUBMIT: 'BTN_RESUBMIT', DELEGATE: 'BTN_DELEGATE'
+  };
+  return map[a] ? t(map[a], a) : a;
 }
 function actionSeverity(a: string): any {
   return ({
@@ -181,10 +183,7 @@ function actionSeverity(a: string): any {
   } as Record<string, string>)[a] || 'secondary';
 }
 function formCodeLabel(c: string): string {
-  return ({
-    LEAVE: '휴가신청서', EXPENSE: '지출결의서', PURCHASE: '구매요청서',
-    BIZTRIP: '출장신청서', CONTRACT: '계약검토서', HR: '인사품의서', IT: 'IT자산신청'
-  } as Record<string, string>)[c] || c;
+  return t('FORM_' + c + '_FULL', c);
 }
 function formatAmount(n: number): string {
   return Number(n).toLocaleString('ko-KR') + '원';

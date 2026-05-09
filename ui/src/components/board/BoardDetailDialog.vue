@@ -1,5 +1,5 @@
 <template>
-  <Dialog v-model:visible="visible" :header="post?.title || '게시글 상세'" modal :style="{ width: '720px' }"
+  <Dialog v-model:visible="visible" :header="post?.title || t('LBL_BOARD_DETAIL_HEADER')" modal :style="{ width: '720px' }"
           :closable="true" :draggable="false">
     <template v-if="loading">
       <div class="loading-center"><i class="pi pi-spin pi-spinner" style="font-size:2rem" /></div>
@@ -8,14 +8,14 @@
       <div class="post-meta">
         <span><strong>{{ post.createdBy }}</strong></span>
         <span>{{ boardTypeLabel(post.boardType) }}</span>
-        <span>조회 {{ post.viewCount }}</span>
+        <span>{{ t('COL_BOARD_VIEWS') }} {{ post.viewCount }}</span>
         <span>{{ formatDate(post.createdAt) }}</span>
       </div>
       <Divider />
       <div class="post-content" v-html="renderedContent"></div>
       <!-- 첨부 -->
       <div v-if="attachments.length" class="attach-section">
-        <h5>첨부 파일 ({{ attachments.length }})</h5>
+        <h5>{{ t('LBL_BOARD_ATTACHMENT') }} ({{ attachments.length }})</h5>
         <div v-for="a in attachments" :key="a.attachId" class="attach-item">
           <i class="pi pi-paperclip" />
           <span>{{ a.filename }}</span>
@@ -28,9 +28,9 @@
     </template>
     <template #footer>
       <div class="dialog-footer">
-        <Button v-if="isAuthor" label="수정" icon="pi pi-pencil" severity="info" @click="$emit('edit', post)" />
-        <Button v-if="isAuthor" label="삭제" icon="pi pi-trash" severity="danger" @click="handleDelete" />
-        <Button label="닫기" severity="secondary" @click="visible = false" />
+        <Button v-if="isAuthor" :label="t('BTN_UPDATE')" icon="pi pi-pencil" severity="info" @click="$emit('edit', post)" />
+        <Button v-if="isAuthor" :label="t('BTN_DELETE')" icon="pi pi-trash" severity="danger" @click="handleDelete" />
+        <Button :label="t('BTN_CLOSE')" severity="secondary" @click="visible = false" />
       </div>
     </template>
   </Dialog>
@@ -45,12 +45,14 @@ import Button from 'primevue/button';
 import CommentThread from './CommentThread.vue';
 import { useAuthStore } from '@/store/auth';
 import { useMessage } from '@/composables/useMessage';
+import { useLabel } from '@/composables/useLabel';
 
 const props = defineProps<{ postId: number }>();
 const emit = defineEmits<{ close: []; edit: [post: any]; deleted: [] }>();
 const visible = defineModel<boolean>('visible', { default: false });
 const auth = useAuthStore();
 const { success, error, confirmDialog } = useMessage();
+const { t } = useLabel();
 
 const loading = ref(false);
 const post = ref<any>(null);
@@ -68,10 +70,7 @@ const renderedContent = computed(() => {
     .replace(/\n/g, '<br>');
 });
 
-const boardTypeLabels: Record<string, string> = {
-  NOTICE: '공지사항', GENERAL: '일반', FREE: '자유', DEPT: '부서', ARCHIVE: '자료실'
-};
-function boardTypeLabel(code: string) { return boardTypeLabels[code] || code; }
+function boardTypeLabel(code: string) { return t('LBL_BOARD_TYPE_' + code, code); }
 
 function formatDate(dt: string) {
   if (!dt) return '';

@@ -1,5 +1,5 @@
 <template>
-  <Dialog v-model:visible="visible" :header="emp?.employeeName || '직원 정보'" modal
+  <Dialog v-model:visible="visible" :header="emp?.employeeName || t('LBL_EMP_DETAIL_HEADER')" modal
           :style="{ width: '440px' }" :closable="true" :draggable="false">
     <template v-if="emp">
       <div class="profile-section">
@@ -13,31 +13,31 @@
       <Divider />
       <div class="detail-grid">
         <div class="detail-row">
-          <span class="detail-label">사번</span>
+          <span class="detail-label">{{ t('COL_USER_NO') }}</span>
           <span>{{ emp.employeeNo }}</span>
         </div>
         <div class="detail-row">
-          <span class="detail-label">이메일</span>
+          <span class="detail-label">{{ t('LBL_USER_EMAIL') }}</span>
           <span>{{ emp.email || '-' }}</span>
         </div>
         <div class="detail-row">
-          <span class="detail-label">전화</span>
+          <span class="detail-label">{{ t('LBL_USER_PHONE') }}</span>
           <span>{{ emp.phone || '-' }}</span>
         </div>
         <div class="detail-row">
-          <span class="detail-label">입사일</span>
+          <span class="detail-label">{{ t('LBL_EMP_HIRE_DATE') }}</span>
           <span>{{ emp.hireDate ? formatDate(emp.hireDate) : '-' }}</span>
         </div>
         <div class="detail-row">
-          <span class="detail-label">상태</span>
-          <Tag :value="emp.status === 'ACTIVE' ? '재직' : emp.status" :severity="emp.status === 'ACTIVE' ? 'success' : 'secondary'" />
+          <span class="detail-label">{{ t('LBL_STATUS') }}</span>
+          <Tag :value="emp.status === 'ACTIVE' ? t('STATUS_USER_ACTIVE') : emp.status" :severity="emp.status === 'ACTIVE' ? 'success' : 'secondary'" />
         </div>
       </div>
       <Divider />
       <div class="quick-actions">
-        <Button icon="pi pi-send" label="메신저 DM" severity="info" size="small" @click="openMessenger" />
-        <Button icon="pi pi-envelope" label="메일 보내기" severity="secondary" size="small" @click="openMail" />
-        <Button icon="pi pi-video" label="화상회의" severity="success" size="small" @click="openVideo" />
+        <Button icon="pi pi-send" :label="t('BTN_EMP_DM')" severity="info" size="small" @click="openMessenger" />
+        <Button icon="pi pi-envelope" :label="t('BTN_EMP_MAIL')" severity="secondary" size="small" @click="openMail" />
+        <Button icon="pi pi-video" :label="t('LBL_PAGE_VIDEO')" severity="success" size="small" @click="openVideo" />
       </div>
     </template>
   </Dialog>
@@ -50,10 +50,12 @@ import Dialog from 'primevue/dialog';
 import Divider from 'primevue/divider';
 import Button from 'primevue/button';
 import Tag from 'primevue/tag';
+import { useLabel } from '@/composables/useLabel';
 
 const props = defineProps<{ employee: any }>();
 const visible = defineModel<boolean>('visible', { default: false });
 const router = useRouter();
+const { t } = useLabel();
 
 const emp = computed(() => props.employee);
 

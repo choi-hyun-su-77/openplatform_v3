@@ -15,10 +15,10 @@
 <template>
   <div class="page favorites-page">
     <div class="page-header">
-      <h2>즐겨찾기 관리</h2>
+      <h2>{{ t('LBL_FAVORITES_TITLE') }}</h2>
       <Button
         icon="pi pi-plus"
-        label="추가"
+        :label="t('BTN_ADD')"
         severity="primary"
         size="small"
         @click="openAddDialog"
@@ -35,7 +35,7 @@
           listStyle="max-height:480px"
           :loading="loading"
           class="favorites-listbox"
-          emptyMessage="등록된 즐겨찾기가 없습니다."
+          :emptyMessage="t('LBL_FAVORITES_EMPTY')"
         >
           <template #option="{ option }">
             <div class="fav-row">
@@ -144,8 +144,10 @@ import Dialog from 'primevue/dialog';
 import InputText from 'primevue/inputtext';
 import Dropdown from 'primevue/dropdown';
 import { useUx, type FavoriteRow } from '@/composables/useUx';
+import { useLabel } from '@/composables/useLabel';
 
 const ux = useUx();
+const { t } = useLabel();
 const router = useRouter();
 const toast = useToast();
 

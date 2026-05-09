@@ -1,30 +1,30 @@
 <template>
   <div class="page">
-    <h2>게시판</h2>
+    <h2>{{ t('LBL_PAGE_BOARD') }}</h2>
     <div class="toolbar">
       <Select v-model="boardType" :options="boardTypes" optionLabel="label" optionValue="code"
-              placeholder="게시판 선택" @change="load" />
-      <InputText v-model="keyword" placeholder="검색어" @keyup.enter="load" />
-      <Button label="검색" icon="pi pi-search" @click="load" />
-      <Button label="글쓰기" icon="pi pi-plus" severity="success" @click="openForm()" />
+              :placeholder="t('PH_BOARD_SELECT')" @change="load" />
+      <InputText v-model="keyword" :placeholder="t('PH_BOARD_SEARCH')" @keyup.enter="load" />
+      <Button :label="t('BTN_SEARCH')" icon="pi pi-search" @click="load" />
+      <Button :label="t('BTN_NEW_POST')" icon="pi pi-plus" severity="success" @click="openForm()" />
     </div>
     <DataTable :value="posts" :rowHover="true" paginator :rows="20" :loading="loading"
                selectionMode="single" @rowSelect="onRowSelect" dataKey="postId">
-      <Column field="postId" header="번호" style="width:70px" />
-      <Column header="제목">
+      <Column field="postId" :header="t('COL_BOARD_NO')" style="width:70px" />
+      <Column :header="t('COL_BOARD_TITLE')">
         <template #body="{ data }">
           <i v-if="data.isPinned === 'Y'" class="pi pi-bookmark-fill" style="color:var(--p-primary-color);margin-right:4px" />
           <span class="post-title-link">{{ data.title }}</span>
         </template>
       </Column>
-      <Column field="boardType" header="분류" style="width:100px">
+      <Column field="boardType" :header="t('COL_BOARD_TYPE')" style="width:100px">
         <template #body="{ data }">
           <Tag :value="boardTypeLabel(data.boardType)" :severity="boardTypeSeverity(data.boardType)" />
         </template>
       </Column>
-      <Column field="createdBy" header="작성자" style="width:100px" />
-      <Column field="viewCount" header="조회" style="width:70px" />
-      <Column header="작성일" style="width:140px">
+      <Column field="createdBy" :header="t('COL_BOARD_AUTHOR')" style="width:100px" />
+      <Column field="viewCount" :header="t('COL_BOARD_VIEWS')" style="width:70px" />
+      <Column :header="t('COL_BOARD_CREATED_AT')" style="width:140px">
         <template #body="{ data }">{{ formatDate(data.createdAt) }}</template>
       </Column>
     </DataTable>
@@ -44,7 +44,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { useRoute } from 'vue-router';
 import axios from 'axios';
 import DataTable from 'primevue/datatable';
@@ -55,17 +55,19 @@ import Select from 'primevue/select';
 import Tag from 'primevue/tag';
 import BoardDetailDialog from '@/components/board/BoardDetailDialog.vue';
 import BoardFormDialog from '@/components/board/BoardFormDialog.vue';
+import { useLabel } from '@/composables/useLabel';
 
 const route = useRoute();
+const { t } = useLabel();
 
-const boardTypes = [
-  { code: '',        label: '전체' },
-  { code: 'NOTICE',  label: '공지사항' },
-  { code: 'GENERAL', label: '일반' },
-  { code: 'FREE',    label: '자유게시판' },
-  { code: 'DEPT',    label: '부서게시판' },
-  { code: 'ARCHIVE', label: '자료실' }
-];
+const boardTypes = computed(() => [
+  { code: '',        label: t('LBL_BOARD_TYPE_ALL') },
+  { code: 'NOTICE',  label: t('LBL_BOARD_TYPE_NOTICE') },
+  { code: 'GENERAL', label: t('LBL_BOARD_TYPE_GENERAL') },
+  { code: 'FREE',    label: t('LBL_BOARD_TYPE_FREE') },
+  { code: 'DEPT',    label: t('LBL_BOARD_TYPE_DEPT') },
+  { code: 'ARCHIVE', label: t('LBL_BOARD_TYPE_ARCHIVE') }
+]);
 const boardType = ref('');
 const keyword = ref('');
 const posts = ref<any[]>([]);
@@ -76,10 +78,7 @@ const detailVisible = ref(false);
 const formVisible = ref(false);
 const editData = ref<any>(null);
 
-const boardTypeLabels: Record<string, string> = {
-  NOTICE: '공지', GENERAL: '일반', FREE: '자유', DEPT: '부서', ARCHIVE: '자료'
-};
-function boardTypeLabel(code: string) { return boardTypeLabels[code] || code; }
+function boardTypeLabel(code: string) { return t('LBL_BOARD_TYPE_' + code, code); }
 function boardTypeSeverity(code: string) {
   if (code === 'NOTICE') return 'danger';
   if (code === 'DEPT') return 'info';

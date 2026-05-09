@@ -1,13 +1,13 @@
 <template>
   <div class="page">
-    <h2>감사 로그</h2>
+    <h2>{{ t('LBL_PAGE_ADMIN_AUDIT') }}</h2>
     <div class="toolbar">
-      <InputText v-model="filter.actorNo" placeholder="작업자 사번" @keyup.enter="load" />
-      <InputText v-model="filter.action" placeholder="액션 (예: admin/userSave)" @keyup.enter="load" />
+      <InputText v-model="filter.actorNo" :placeholder="t('PH_AUDIT_ACTOR')" @keyup.enter="load" />
+      <InputText v-model="filter.action" :placeholder="t('PH_AUDIT_ACTION')" @keyup.enter="load" />
       <DatePicker v-model="dateRange" selectionMode="range" :manualInput="false"
-                  dateFormat="yy-mm-dd" placeholder="기간" showIcon />
-      <Button label="검색" icon="pi pi-search" @click="load" />
-      <Button label="초기화" icon="pi pi-refresh" severity="secondary" @click="reset" />
+                  dateFormat="yy-mm-dd" :placeholder="t('PH_DATE_RANGE')" showIcon />
+      <Button :label="t('BTN_SEARCH')" icon="pi pi-search" @click="load" />
+      <Button :label="t('BTN_RESET')" icon="pi pi-refresh" severity="secondary" @click="reset" />
     </div>
 
     <DataTable :value="rows" :rowHover="true" paginator :rows="pageSize"
@@ -15,33 +15,33 @@
                @page="onPage" :loading="loading"
                selectionMode="single" v-model:selection="selectedRow"
                @row-click="(e) => openDetail(e.data)" dataKey="auditId">
-      <Column field="auditId" header="ID" style="width:80px" />
-      <Column header="작업시각" style="width:170px">
+      <Column field="auditId" :header="t('COL_AUDIT_ID')" style="width:80px" />
+      <Column :header="t('COL_AUDIT_TIME')" style="width:170px">
         <template #body="{ data }">{{ formatDate(data.actedAt) }}</template>
       </Column>
-      <Column field="actorNo" header="작업자" style="width:100px" />
-      <Column field="actorName" header="이름" style="width:110px" />
-      <Column field="action" header="액션" style="width:200px">
+      <Column field="actorNo" :header="t('COL_AUDIT_ACTOR_NO')" style="width:100px" />
+      <Column field="actorName" :header="t('COL_AUDIT_ACTOR_NAME')" style="width:110px" />
+      <Column field="action" :header="t('COL_AUDIT_ACTION')" style="width:200px">
         <template #body="{ data }">
           <Tag :value="data.action" severity="info" />
         </template>
       </Column>
-      <Column field="targetType" header="대상유형" style="width:100px" />
-      <Column field="targetId" header="대상ID" style="width:100px" />
-      <Column field="ipAddr" header="IP" style="width:120px" />
+      <Column field="targetType" :header="t('COL_AUDIT_TARGET_TYPE')" style="width:100px" />
+      <Column field="targetId" :header="t('COL_AUDIT_TARGET_ID')" style="width:100px" />
+      <Column field="ipAddr" :header="t('COL_AUDIT_IP')" style="width:120px" />
     </DataTable>
 
-    <Dialog v-model:visible="detailVisible" header="감사 로그 상세" modal style="width:760px">
+    <Dialog v-model:visible="detailVisible" :header="t('LBL_AUDIT_DETAIL_HEADER')" modal style="width:760px">
       <div v-if="detailRow" class="detail">
-        <div class="detail-row"><label>ID</label><span>{{ detailRow.auditId }}</span></div>
-        <div class="detail-row"><label>시각</label><span>{{ formatDate(detailRow.actedAt) }}</span></div>
-        <div class="detail-row"><label>작업자</label><span>{{ detailRow.actorName }} ({{ detailRow.actorNo }})</span></div>
-        <div class="detail-row"><label>액션</label><span><Tag :value="detailRow.action" severity="info" /></span></div>
-        <div class="detail-row"><label>대상</label><span>{{ detailRow.targetType }} / {{ detailRow.targetId || '-' }}</span></div>
-        <div class="detail-row"><label>IP</label><span>{{ detailRow.ipAddr || '-' }}</span></div>
-        <div class="detail-row"><label>입력 (before)</label></div>
+        <div class="detail-row"><label>{{ t('COL_AUDIT_ID') }}</label><span>{{ detailRow.auditId }}</span></div>
+        <div class="detail-row"><label>{{ t('LBL_AUDIT_TIME') }}</label><span>{{ formatDate(detailRow.actedAt) }}</span></div>
+        <div class="detail-row"><label>{{ t('COL_AUDIT_ACTOR_NO') }}</label><span>{{ detailRow.actorName }} ({{ detailRow.actorNo }})</span></div>
+        <div class="detail-row"><label>{{ t('COL_AUDIT_ACTION') }}</label><span><Tag :value="detailRow.action" severity="info" /></span></div>
+        <div class="detail-row"><label>{{ t('LBL_AUDIT_TARGET') }}</label><span>{{ detailRow.targetType }} / {{ detailRow.targetId || '-' }}</span></div>
+        <div class="detail-row"><label>{{ t('COL_AUDIT_IP') }}</label><span>{{ detailRow.ipAddr || '-' }}</span></div>
+        <div class="detail-row"><label>{{ t('LBL_AUDIT_BEFORE') }}</label></div>
         <pre class="json">{{ formatJson(detailRow.beforeJson) }}</pre>
-        <div class="detail-row"><label>결과 (after)</label></div>
+        <div class="detail-row"><label>{{ t('LBL_AUDIT_AFTER') }}</label></div>
         <pre class="json">{{ formatJson(detailRow.afterJson) }}</pre>
       </div>
     </Dialog>
@@ -50,6 +50,9 @@
 
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
+import { useLabel } from '@/composables/useLabel'
+
+const { t } = useLabel()
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import InputText from 'primevue/inputtext'
@@ -103,7 +106,7 @@ async function load() {
     rows.value = res.rows
     total.value = res.total
   } catch (e: any) {
-    toast.add({ severity: 'error', summary: '조회 실패', detail: e.message || String(e), life: 3000 })
+    toast.add({ severity: 'error', summary: t('MSG_LOAD_FAILED'), detail: e.message || String(e), life: 3000 })
   } finally {
     loading.value = false
   }
@@ -138,7 +141,7 @@ function formatDate(s: string): string {
 }
 
 function formatJson(v: any): string {
-  if (v == null) return '(없음)'
+  if (v == null) return t('LBL_AUDIT_NONE')
   try {
     if (typeof v === 'string') {
       // JSONB 가 문자열로 직렬화되어 도착할 수도 있고 객체일 수도 있음

@@ -12,65 +12,65 @@
   <Dialog
     :visible="visible"
     @update:visible="(v: boolean) => emit('update:visible', v)"
-    header="결재 상신"
+    :header="t('LBL_APPROVAL_SUBMIT_HEADER')"
     modal
     :style="{ width: '760px', maxWidth: '95vw' }"
     :draggable="false"
   >
     <div class="form-grid">
-      <label>양식 *</label>
+      <label>{{ t('LBL_APPROVAL_FORM_REQ') }}</label>
       <Dropdown v-model="form.formCode" :options="formOptions" optionLabel="label" optionValue="value"
-                placeholder="양식을 선택하세요" class="w-full" @change="onFormChange" />
+                :placeholder="t('PH_FORM_SELECT')" class="w-full" @change="onFormChange" />
 
-      <label>제목 *</label>
-      <InputText v-model="form.docTitle" placeholder="문서 제목" class="w-full" />
+      <label>{{ t('LBL_APPROVAL_TITLE_REQ') }}</label>
+      <InputText v-model="form.docTitle" :placeholder="t('PH_DOC_TITLE')" class="w-full" />
 
       <!-- LEAVE 양식 전용 필드 (Phase 14 트랙 1) -->
       <template v-if="isLeave">
-        <label>휴가 유형 *</label>
+        <label>{{ t('LBL_APPROVAL_LEAVE_TYPE_REQ') }}</label>
         <Dropdown v-model="leaveForm.leaveType" :options="leaveTypeOptions"
                   optionLabel="label" optionValue="value"
-                  placeholder="유형을 선택하세요" class="w-full" @change="recalcDays" />
+                  :placeholder="t('PH_LEAVE_TYPE_SELECT')" class="w-full" @change="recalcDays" />
 
-        <label>시작일 *</label>
+        <label>{{ t('LBL_APPROVAL_FROM_DATE_REQ') }}</label>
         <DatePicker v-model="leaveForm.fromDate" dateFormat="yy-mm-dd"
                     showIcon class="w-full" @update:modelValue="recalcDays" />
 
-        <label>종료일 *</label>
+        <label>{{ t('LBL_APPROVAL_TO_DATE_REQ') }}</label>
         <DatePicker v-model="leaveForm.toDate" dateFormat="yy-mm-dd"
                     showIcon class="w-full" @update:modelValue="recalcDays" />
 
-        <label>일수</label>
+        <label>{{ t('LBL_APPROVAL_DAYS') }}</label>
         <div class="leave-days-row">
           <InputNumber v-model="leaveForm.days" :min="0" :max="365" :step="0.5"
                        :minFractionDigits="1" :maxFractionDigits="1"
                        showButtons buttonLayout="horizontal" class="w-half" />
-          <small class="hint">반차(0.5)는 자동 적용. 영업일 = 주말/공휴일 제외 (UI 측은 주말만 자동 제외).</small>
+          <small class="hint">{{ t('LBL_APPROVAL_DAYS_HINT') }}</small>
         </div>
 
-        <label>사유</label>
-        <Textarea v-model="leaveForm.reason" rows="3" autoResize placeholder="휴가 사유" class="w-full" />
+        <label>{{ t('LBL_APPROVAL_REASON') }}</label>
+        <Textarea v-model="leaveForm.reason" rows="3" autoResize :placeholder="t('PH_LEAVE_REASON')" class="w-full" />
       </template>
 
       <!-- 비-LEAVE 양식: 금액/본문 -->
       <template v-else>
-        <label>금액</label>
+        <label>{{ t('LBL_APPROVAL_AMOUNT') }}</label>
         <InputNumber v-model="form.amount" placeholder="0" :min="0" :step="100000"
                      showButtons buttonLayout="horizontal" mode="currency" currency="KRW"
                      class="w-full" @input="updatePreview" />
 
-        <label>본문</label>
-        <Textarea v-model="form.content" rows="8" autoResize placeholder="결재 본문을 입력하세요" class="w-full" />
+        <label>{{ t('LBL_APPROVAL_CONTENT') }}</label>
+        <Textarea v-model="form.content" rows="8" autoResize :placeholder="t('PH_APPROVAL_CONTENT')" class="w-full" />
       </template>
     </div>
 
     <div class="approver-preview">
-      <h4><i class="pi pi-users"></i> 결재선 미리보기</h4>
-      <div v-if="loadingPreview" class="empty">불러오는 중...</div>
-      <div v-else-if="!previewApprovers.length" class="empty">양식과 금액을 선택하면 결재선이 자동으로 표시됩니다</div>
+      <h4><i class="pi pi-users"></i> {{ t('LBL_APPROVAL_LINE_PREVIEW') }}</h4>
+      <div v-if="loadingPreview" class="empty">{{ t('LBL_APPROVAL_PREVIEW_LOADING') }}</div>
+      <div v-else-if="!previewApprovers.length" class="empty">{{ t('LBL_APPROVAL_PREVIEW_EMPTY') }}</div>
       <ol v-else>
         <li v-for="(a, i) in previewApprovers" :key="i">
-          <Tag :value="`${i + 1}단계`" severity="info" />
+          <Tag :value="`${i + 1}${t('LBL_APPROVAL_STEP_SUFFIX')}`" severity="info" />
           <strong>{{ a.approverName }}</strong>
           <span class="role">{{ a.positionName }}</span>
         </li>
@@ -78,8 +78,8 @@
     </div>
 
     <template #footer>
-      <Button label="취소" text @click="emit('update:visible', false)" />
-      <Button label="상신" icon="pi pi-send" :loading="submitting" @click="onSubmit" />
+      <Button :label="t('BTN_CANCEL')" text @click="emit('update:visible', false)" />
+      <Button :label="t('BTN_SUBMIT_DOC')" icon="pi pi-send" :loading="submitting" @click="onSubmit" />
     </template>
   </Dialog>
 </template>
@@ -97,6 +97,9 @@ import DatePicker from 'primevue/datepicker';
 import axios from 'axios';
 import { useApproval } from '@/composables/useApproval';
 import { useAuthStore } from '@/store/auth';
+import { useLabel } from '@/composables/useLabel';
+
+const { t } = useLabel();
 
 const props = defineProps<{
   visible: boolean;
@@ -135,14 +138,14 @@ const leaveForm = ref<LeaveFormState>({
   reason: ''
 });
 
-const leaveTypeOptions = [
-  { label: '연차', value: 'ANNUAL' },
-  { label: '오전반차', value: 'HALF_AM' },
-  { label: '오후반차', value: 'HALF_PM' },
-  { label: '병가', value: 'SICK' },
-  { label: '경조사', value: 'FAMILY' },
-  { label: '무급휴가', value: 'UNPAID' }
-];
+const leaveTypeOptions = computed(() => [
+  { label: t('LEAVE_TYPE_ANNUAL'), value: 'ANNUAL' },
+  { label: t('LEAVE_TYPE_HALF_AM'), value: 'HALF_AM' },
+  { label: t('LEAVE_TYPE_HALF_PM'), value: 'HALF_PM' },
+  { label: t('LEAVE_TYPE_SICK'), value: 'SICK' },
+  { label: t('LEAVE_TYPE_FAMILY'), value: 'FAMILY' },
+  { label: t('LEAVE_TYPE_UNPAID'), value: 'UNPAID' }
+]);
 
 const isLeave = computed(() => form.value.formCode === 'LEAVE');
 
@@ -161,10 +164,10 @@ async function loadForms() {
   } catch (e) {
     console.error('form templates failed', e);
     formOptions.value = [
-      { label: '휴가신청서', value: 'LEAVE' },
-      { label: '지출결의서', value: 'EXPENSE' },
-      { label: '구매요청서', value: 'PURCHASE' },
-      { label: '출장신청서', value: 'BIZTRIP' }
+      { label: t('FORM_LEAVE_FULL'), value: 'LEAVE' },
+      { label: t('FORM_EXPENSE_FULL'), value: 'EXPENSE' },
+      { label: t('FORM_PURCHASE_FULL'), value: 'PURCHASE' },
+      { label: t('FORM_BIZTRIP_FULL'), value: 'BIZTRIP' }
     ];
   }
 }
@@ -193,23 +196,23 @@ function updatePreview() {
 }
 
 async function onSubmit() {
-  if (!form.value.formCode) { alert('양식을 선택하세요'); return; }
-  if (!form.value.docTitle.trim()) { alert('제목을 입력하세요'); return; }
+  if (!form.value.formCode) { alert(t('MSG_APPROVAL_FORM_REQ')); return; }
+  if (!form.value.docTitle.trim()) { alert(t('MSG_APPROVAL_TITLE_REQ')); return; }
 
   // LEAVE 추가 검증 / payload 구성
   const extra: Record<string, any> = {};
   if (isLeave.value) {
-    if (!leaveForm.value.leaveType) { alert('휴가 유형을 선택하세요'); return; }
+    if (!leaveForm.value.leaveType) { alert(t('MSG_APPROVAL_LEAVE_TYPE_REQ')); return; }
     if (!leaveForm.value.fromDate || !leaveForm.value.toDate) {
-      alert('시작일/종료일을 선택하세요');
+      alert(t('MSG_APPROVAL_DATE_REQ'));
       return;
     }
     if (leaveForm.value.toDate < leaveForm.value.fromDate) {
-      alert('종료일은 시작일 이후여야 합니다');
+      alert(t('MSG_APPROVAL_DATE_ORDER'));
       return;
     }
     if (leaveForm.value.days <= 0) {
-      alert('일수가 0입니다. 날짜를 다시 확인하세요');
+      alert(t('MSG_APPROVAL_DAYS_ZERO'));
       return;
     }
     extra.leaveType = leaveForm.value.leaveType;
@@ -235,12 +238,14 @@ async function onSubmit() {
       ...extra
     });
     const docId = (result as any).docId;
-    alert(`상신 완료. 문서번호 ${docId} (결재자 ${(result as any).approvers}명)`);
+    alert(t('MSG_APPROVAL_SUBMIT_DONE')
+      .replace('{id}', String(docId))
+      .replace('{n}', String((result as any).approvers)));
     emit('submitted', docId);
     emit('update:visible', false);
     resetForms();
   } catch (e: any) {
-    alert('상신 실패: ' + (e?.response?.data?.message || e.message));
+    alert(t('MSG_APPROVAL_SUBMIT_FAILED') + ': ' + (e?.response?.data?.message || e.message));
   } finally {
     submitting.value = false;
   }
@@ -303,7 +308,7 @@ watch(() => props.visible, (v) => {
     if (props.initialFormCode) {
       form.value.formCode = props.initialFormCode;
       if (props.initialFormCode === 'LEAVE' && !form.value.docTitle) {
-        form.value.docTitle = '휴가신청서';
+        form.value.docTitle = t('FORM_LEAVE_FULL');
       }
       updatePreview();
       if (isLeave.value) recalcDays();

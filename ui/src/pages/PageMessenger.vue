@@ -1,6 +1,6 @@
 <template>
   <div class="page">
-    <h2>메신저 (Rocket.Chat)</h2>
+    <h2>{{ t('LBL_PAGE_MESSENGER') }} (Rocket.Chat)</h2>
     <div class="sso-panel">
       <div class="icon">
         <i class="pi pi-send" />
@@ -17,6 +17,9 @@
 
 <script setup lang="ts">
 import Button from 'primevue/button';
+import { useLabel } from '@/composables/useLabel';
+
+const { t } = useLabel();
 // Rocket.Chat Custom OAuth 'keycloak' 콜백 경로: /_oauth/keycloak
 // Keycloak authorize 엔드포인트로 직접 진입하여 redirect_uri 로 Rocket.Chat 로그인 완성.
 const rcBase = (import.meta as any).env.VITE_ROCKETCHAT_URL || 'http://localhost:19065';

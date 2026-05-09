@@ -2,7 +2,7 @@
   <div class="page-mail">
     <!-- 좌측: 메일함 트리 -->
     <aside class="mail-sidebar">
-      <Button label="새 메일" icon="pi pi-pencil" class="compose-btn" @click="openCompose()" />
+      <Button :label="t('BTN_COMPOSE_MAIL')" icon="pi pi-pencil" class="compose-btn" @click="openCompose()" />
       <MailboxTree :mailboxes="mailboxes" :selected="selectedMailboxId" @select="onSelectMailbox" />
     </aside>
     <!-- 중앙: 메일 리스트 -->
@@ -29,6 +29,9 @@ import MailboxTree from '@/components/mail/MailboxTree.vue';
 import EmailList from '@/components/mail/EmailList.vue';
 import EmailDetail from '@/components/mail/EmailDetail.vue';
 import ComposeDialog from '@/components/mail/ComposeDialog.vue';
+import { useLabel } from '@/composables/useLabel';
+
+const { t } = useLabel();
 
 const mailboxes = ref<any[]>([]);
 const emails = ref<any[]>([]);

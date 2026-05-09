@@ -1,6 +1,6 @@
 <template>
   <div class="page">
-    <h2>화상회의 (LiveKit)</h2>
+    <h2>{{ t('LBL_PAGE_VIDEO') }} (LiveKit)</h2>
     <div v-if="!connected" class="pre">
       <div class="sso-panel">
         <div class="icon"><i class="pi pi-video" /></div>
@@ -41,6 +41,9 @@ import axios from 'axios';
 import Button from 'primevue/button';
 import InputText from 'primevue/inputtext';
 import { Room, RoomEvent, Track, createLocalTracks, type LocalAudioTrack, type LocalVideoTrack, type RemoteParticipant, type RemoteTrack } from 'livekit-client';
+import { useLabel } from '@/composables/useLabel';
+
+const { t } = useLabel();
 
 const roomName = ref('v3-general');
 const loading = ref(false);

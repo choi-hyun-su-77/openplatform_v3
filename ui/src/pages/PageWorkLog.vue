@@ -18,7 +18,7 @@
 <template>
   <div class="page worklog-page">
     <div class="page-header">
-      <h2><i class="pi pi-pencil" /> 업무일지</h2>
+      <h2><i class="pi pi-pencil" /> {{ t('LBL_PAGE_WORKLOG') }}</h2>
       <div class="header-actions">
         <SelectButton
           v-if="canTeamView"
@@ -28,14 +28,14 @@
           optionValue="value"
           :allowEmpty="false"
         />
-        <Button label="새로고침" icon="pi pi-refresh" text @click="reload" />
+        <Button :label="t('BTN_REFRESH')" icon="pi pi-refresh" text @click="reload" />
       </div>
     </div>
 
     <!-- 본인 뷰 -->
     <div v-if="viewMode === 'MINE'" class="my-grid">
       <aside class="cal-pane">
-        <h3 class="pane-title">캘린더</h3>
+        <h3 class="pane-title">{{ t('LBL_WORKLOG_CALENDAR') }}</h3>
         <DatePicker
           v-model="selectedDate"
           inline
@@ -182,15 +182,17 @@ import {
 } from '@/composables/useWorkLog';
 import { useAuthStore } from '@/store/auth';
 import { usePermission } from '@/composables/usePermission';
+import { useLabel } from '@/composables/useLabel';
 
 const auth = useAuthStore();
 const worklog = useWorkLog();
 const perm = usePermission('worklog');
+const { t } = useLabel();
 
-const viewModes = [
-  { value: 'MINE', label: '본인' },
-  { value: 'TEAM', label: '팀' }
-];
+const viewModes = computed(() => [
+  { value: 'MINE', label: t('LBL_WORKLOG_VIEW_MINE') },
+  { value: 'TEAM', label: t('LBL_WORKLOG_VIEW_TEAM') }
+]);
 const viewMode = ref<'MINE' | 'TEAM'>('MINE');
 
 // 부서장 / ADMIN 토글 노출 여부

@@ -16,7 +16,7 @@
     <!-- 좌측: 폴더 트리 -->
     <aside class="folder-pane">
       <div class="pane-header">
-        <h3>폴더</h3>
+        <h3>{{ t('LBL_DATALIB_FOLDERS') }}</h3>
         <Button icon="pi pi-refresh" text size="small" @click="loadFolders" />
       </div>
       <Tree
@@ -42,7 +42,7 @@
     <section class="file-pane">
       <div class="toolbar">
         <h2 class="title">
-          {{ selectedFolder?.folderName || '자료실' }}
+          {{ selectedFolder?.folderName || t('LBL_PAGE_DATALIB') }}
           <small v-if="selectedFolder">
             <Tag :value="scopeLabel(selectedFolder.scope)" :severity="scopeSeverity(selectedFolder.scope)" />
           </small>
@@ -155,6 +155,9 @@ import { useDataLibrary, buildFolderTree,
          type FolderRow, type FolderTreeNode, type FileRow } from '@/composables/useDataLibrary';
 import { useMessage } from '@/composables/useMessage';
 import { useAuthStore } from '@/store/auth';
+import { useLabel } from '@/composables/useLabel';
+
+const { t } = useLabel();
 
 const lib = useDataLibrary();
 const { success, error, confirmDialog } = useMessage();

@@ -12,18 +12,18 @@
 <template>
   <div class="page notify-settings">
     <div class="page-header">
-      <h2>알림 설정</h2>
+      <h2>{{ t('LBL_PAGE_NOTIFY_SETTINGS') }}</h2>
       <div class="header-actions">
         <Button
           icon="pi pi-replay"
-          label="기본값으로"
+          :label="t('BTN_RESET_DEFAULT')"
           severity="secondary"
           size="small"
           @click="resetToDefault"
         />
         <Button
           icon="pi pi-save"
-          label="저장"
+          :label="t('BTN_SAVE')"
           severity="primary"
           size="small"
           :loading="saving"
@@ -32,11 +32,7 @@
       </div>
     </div>
 
-    <p class="note">
-      각 카테고리별로 알림을 받을 채널을 선택하세요.
-      포탈은 헤더 종 아이콘에 SSE 로 즉시 알림, 이메일은 등록된 메일 주소로 발송,
-      메신저는 Rocket.Chat DM 으로 전달됩니다.
-    </p>
+    <p class="note">{{ t('LBL_NOTIFY_NOTE') }}</p>
 
     <DataTable :value="matrix" :rowHover="true" dataKey="category" :loading="loading" class="matrix-table">
       <Column field="categoryLabel" header="카테고리" style="width:160px" />
@@ -87,8 +83,10 @@ import Column from 'primevue/column';
 import Button from 'primevue/button';
 import ToggleButton from 'primevue/togglebutton';
 import { useUx, type NotifyPrefRow } from '@/composables/useUx';
+import { useLabel } from '@/composables/useLabel';
 
 const ux = useUx();
+const { t } = useLabel();
 const toast = useToast();
 
 interface MatrixRow {

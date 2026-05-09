@@ -14,6 +14,7 @@ import router from './router';
 import { setupInterceptor } from './api/interceptor';
 import { initKeycloak } from './keycloak';
 import { useAuthStore } from './store/auth';
+import { loadLabels } from './composables/useLabel';
 
 async function bootstrap() {
   const app = createApp(App);
@@ -27,6 +28,9 @@ async function bootstrap() {
   app.use(ConfirmationService);
 
   setupInterceptor(router);
+
+  // i18n 라벨 부트스트랩 (인증과 무관 — /api/labels 는 permitAll). 실패해도 앱은 계속 부팅.
+  loadLabels().catch((e) => console.warn('loadLabels failed', e));
 
   try {
     const kc = await initKeycloak();

@@ -1,44 +1,44 @@
 <template>
-  <Dialog v-model:visible="visible" :header="isEdit ? '일정 수정' : '새 일정'" modal
+  <Dialog v-model:visible="visible" :header="isEdit ? t('LBL_CAL_EVENT_EDIT') : t('LBL_CAL_EVENT_NEW')" modal
           :style="{ width: '480px' }" :closable="true" :draggable="false">
     <div class="form-grid">
       <div class="field">
-        <label>제목 <span class="req">*</span></label>
-        <InputText v-model="form.title" placeholder="일정 제목" class="w-full" />
+        <label>{{ t('LBL_TITLE') }} <span class="req">*</span></label>
+        <InputText v-model="form.title" :placeholder="t('LBL_TITLE')" class="w-full" />
       </div>
       <div class="field-row">
         <div class="field flex-1">
-          <label>시작</label>
+          <label>{{ t('LBL_APPROVAL_FROM_DATE') }}</label>
           <DatePicker v-model="form.startDt" showTime :showSeconds="false" dateFormat="yy-mm-dd" class="w-full" />
         </div>
         <div class="field flex-1">
-          <label>종료</label>
+          <label>{{ t('LBL_APPROVAL_TO_DATE') }}</label>
           <DatePicker v-model="form.endDt" showTime :showSeconds="false" dateFormat="yy-mm-dd" class="w-full" />
         </div>
       </div>
       <div class="field">
-        <label><input type="checkbox" v-model="form.allDay" /> 종일</label>
+        <label><input type="checkbox" v-model="form.allDay" /> {{ t('LBL_CAL_ALL_DAY') }}</label>
       </div>
       <div class="field">
-        <label>범위</label>
+        <label>{{ t('LBL_CAL_SCOPE_ALL') }}</label>
         <Select v-model="form.eventType" :options="eventTypes" optionLabel="label" optionValue="value" class="w-full" />
       </div>
       <div class="field">
-        <label>색상</label>
+        <label>{{ t('LBL_CAL_COLOR') }}</label>
         <div class="color-picks">
           <span v-for="c in colors" :key="c" :class="['color-dot', { selected: form.color === c }]"
                 :style="{ background: c }" @click="form.color = c" />
         </div>
       </div>
       <div class="field">
-        <label>설명</label>
+        <label>{{ t('LBL_CAL_DESCRIPTION') }}</label>
         <Textarea v-model="form.description" :rows="3" class="w-full" />
       </div>
     </div>
     <template #footer>
-      <Button v-if="isEdit" label="삭제" icon="pi pi-trash" severity="danger" text @click="handleDelete" />
-      <Button label="취소" severity="secondary" @click="visible = false" />
-      <Button :label="isEdit ? '수정' : '저장'" icon="pi pi-check" @click="handleSave" :loading="saving" />
+      <Button v-if="isEdit" :label="t('BTN_DELETE')" icon="pi pi-trash" severity="danger" text @click="handleDelete" />
+      <Button :label="t('BTN_CANCEL')" severity="secondary" @click="visible = false" />
+      <Button :label="isEdit ? t('BTN_UPDATE') : t('BTN_SAVE')" icon="pi pi-check" @click="handleSave" :loading="saving" />
     </template>
   </Dialog>
 </template>
@@ -54,18 +54,20 @@ import Select from 'primevue/select';
 import DatePicker from 'primevue/datepicker';
 import { useAuthStore } from '@/store/auth';
 import { useMessage } from '@/composables/useMessage';
+import { useLabel } from '@/composables/useLabel';
 
 const props = defineProps<{ eventData?: any }>();
 const emit = defineEmits<{ saved: []; deleted: [] }>();
 const visible = defineModel<boolean>('visible', { default: false });
 const auth = useAuthStore();
 const { success, error } = useMessage();
+const { t } = useLabel();
 
-const eventTypes = [
-  { value: 'PERSONAL', label: '개인' },
-  { value: 'DEPT', label: '부서' },
-  { value: 'COMPANY', label: '회사' }
-];
+const eventTypes = computed(() => [
+  { value: 'PERSONAL', label: t('LBL_CAL_SCOPE_PERSONAL') },
+  { value: 'DEPT', label: t('LBL_CAL_SCOPE_DEPT') },
+  { value: 'COMPANY', label: t('LBL_CAL_SCOPE_COMPANY') }
+]);
 const colors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#f97316'];
 
 const isEdit = computed(() => !!props.eventData?.eventId);

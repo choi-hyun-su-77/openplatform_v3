@@ -1,9 +1,9 @@
 <template>
   <div class="page">
-    <h2>캘린더</h2>
+    <h2>{{ t('LBL_PAGE_CALENDAR') }}</h2>
     <div class="filters">
       <SelectButton v-model="scope" :options="scopes" optionLabel="label" optionValue="value" @change="load" />
-      <Button label="일정 추가" icon="pi pi-plus" size="small" @click="openNewEvent()" />
+      <Button :label="t('BTN_NEW_EVENT')" icon="pi pi-plus" size="small" @click="openNewEvent()" />
     </div>
     <FullCalendar ref="calRef" :options="calendarOptions" />
 
@@ -24,17 +24,20 @@ import Button from 'primevue/button';
 import CalendarEventDialog from '@/components/calendar/CalendarEventDialog.vue';
 import { useAuthStore } from '@/store/auth';
 import { useMessage } from '@/composables/useMessage';
+import { useLabel } from '@/composables/useLabel';
+import { getCurrentLocale } from '@/composables/useLocale';
 
 const authStore = useAuthStore();
 const { error } = useMessage();
+const { t } = useLabel();
 const calRef = ref<InstanceType<typeof FullCalendar> | null>(null);
 
-const scopes = [
-  { label: '전체', value: 'ALL' },
-  { label: '개인', value: 'PERSONAL' },
-  { label: '부서', value: 'DEPT' },
-  { label: '회사', value: 'COMPANY' }
-];
+const scopes = computed(() => [
+  { label: t('LBL_CAL_SCOPE_ALL'), value: 'ALL' },
+  { label: t('LBL_CAL_SCOPE_PERSONAL'), value: 'PERSONAL' },
+  { label: t('LBL_CAL_SCOPE_DEPT'), value: 'DEPT' },
+  { label: t('LBL_CAL_SCOPE_COMPANY'), value: 'COMPANY' }
+]);
 const scope = ref('ALL');
 const events = ref<any[]>([]);
 const holidays = ref<any[]>([]);
@@ -70,7 +73,7 @@ const calendarOptions = computed(() => ({
     center: 'title',
     right: 'dayGridMonth,timeGridWeek,timeGridDay'
   },
-  locale: 'ko',
+  locale: getCurrentLocale(),
   events: allEvents.value,
   editable: true,
   selectable: true,
@@ -137,7 +140,7 @@ async function updateEventTimes(info: any) {
       }
     });
   } catch (e) {
-    error('일정 이동에 실패했습니다');
+    error(t('MSG_CAL_MOVE_FAILED'));
     info.revert();
   }
 }

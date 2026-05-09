@@ -127,12 +127,17 @@ export const useAuthStore = defineStore('auth', () => {
           emp = null;
         }
       }
+      // Keycloak token 의 realm_access.roles 를 폴백으로 사용 — BFF /me 응답이
+      // realm_access 를 보내지 않는 경우가 있으므로 (userinfo 는 OIDC standard claims 만 포함).
+      const kc = getKeycloak();
+      const tokenRoles: string[] = (kc?.tokenParsed as any)?.realm_access?.roles || [];
+      const meRoles: string[] = (data.realm_access && data.realm_access.roles) || [];
       user.value = {
         userId: data.preferred_username || data.sub,
         userName: data.name || data.preferred_username || 'User',
         email: data.email || emp?.email || '',
         deptName: data.dept_name || emp?.deptName || '',
-        roles: (data.realm_access && data.realm_access.roles) || [],
+        roles: meRoles.length ? meRoles : tokenRoles,
         preferredLocale: data.locale || 'ko',
         employeeNo: emp?.employeeNo || undefined,
         employeeId: emp?.employeeId != null ? Number(emp.employeeId) : undefined,

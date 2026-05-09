@@ -1,14 +1,14 @@
 <template>
   <div class="page">
-    <h2>공통코드 관리</h2>
+    <h2>{{ t('LBL_PAGE_ADMIN_CODES') }}</h2>
     <div class="layout">
       <aside class="group-panel">
         <div class="group-toolbar">
-          <Button label="그룹 추가" icon="pi pi-plus" size="small" @click="onAddGroup" />
-          <Button label="새로고침" icon="pi pi-refresh" size="small" severity="secondary" @click="loadGroups" />
+          <Button :label="t('BTN_ADD_GROUP')" icon="pi pi-plus" size="small" @click="onAddGroup" />
+          <Button :label="t('BTN_REFRESH')" icon="pi pi-refresh" size="small" severity="secondary" @click="loadGroups" />
         </div>
         <Listbox v-model="selectedGroup" :options="groups" optionLabel="groupCd"
-                 :filter="true" filterPlaceholder="그룹 검색" listStyle="max-height:60vh"
+                 :filter="true" :filterPlaceholder="t('PH_GROUP_SEARCH')" listStyle="max-height:60vh"
                  @change="onGroupChange">
           <template #option="{ option }">
             <span class="group-row">
@@ -21,36 +21,36 @@
 
       <section class="codes-panel">
         <div class="toolbar">
-          <h3 style="margin:0">{{ selectedGroup ? `${selectedGroup.groupCd}` : '그룹을 선택하세요' }}</h3>
+          <h3 style="margin:0">{{ selectedGroup ? `${selectedGroup.groupCd}` : t('LBL_CODE_GROUP_HINT') }}</h3>
           <span style="flex:1"></span>
-          <Button label="행 추가" icon="pi pi-plus" size="small" :disabled="!selectedGroup" @click="addRow" />
-          <Button label="저장" icon="pi pi-check" size="small" severity="success"
+          <Button :label="t('BTN_ADD_ROW')" icon="pi pi-plus" size="small" :disabled="!selectedGroup" @click="addRow" />
+          <Button :label="t('BTN_SAVE')" icon="pi pi-check" size="small" severity="success"
                   :disabled="!selectedGroup" @click="onSave" :loading="saving" />
         </div>
 
         <DataTable :value="codes" editMode="cell" @cell-edit-complete="onCellEdit"
                    responsiveLayout="scroll" size="small" :loading="loading">
-          <Column field="groupCd" header="그룹" style="width:130px" />
-          <Column field="code" header="코드" style="width:150px">
+          <Column field="groupCd" :header="t('COL_CODE_GROUP')" style="width:130px" />
+          <Column field="code" :header="t('COL_CODE_CODE')" style="width:150px">
             <template #editor="{ data, field }">
               <InputText v-model="data[field]" :disabled="!data._isNew" />
             </template>
           </Column>
-          <Column field="codeName" header="코드명">
+          <Column field="codeName" :header="t('COL_CODE_NAME')">
             <template #editor="{ data, field }"><InputText v-model="data[field]" /></template>
           </Column>
-          <Column field="sortOrder" header="순서" style="width:80px">
+          <Column field="sortOrder" :header="t('COL_CODE_SORT')" style="width:80px">
             <template #editor="{ data, field }"><InputNumber v-model="data[field]" /></template>
           </Column>
-          <Column field="useYn" header="사용" style="width:80px">
+          <Column field="useYn" :header="t('COL_CODE_USE')" style="width:80px">
             <template #editor="{ data, field }">
               <Select v-model="data[field]" :options="yesNoOptions" optionLabel="label" optionValue="code" />
             </template>
             <template #body="{ data, field }">
-              <Tag :value="(data as any)[field as string] === 'Y' ? '사용' : '미사용'" :severity="(data as any)[field as string] === 'Y' ? 'success' : 'danger'" />
+              <Tag :value="(data as any)[field as string] === 'Y' ? t('STATUS_USE_Y') : t('STATUS_USE_N')" :severity="(data as any)[field as string] === 'Y' ? 'success' : 'danger'" />
             </template>
           </Column>
-          <Column header="작업" style="width:80px">
+          <Column :header="t('COL_CODE_ACTIONS')" style="width:80px">
             <template #body="{ data }">
               <Button icon="pi pi-trash" text severity="danger" size="small" @click="onDelete(data)" />
             </template>
@@ -59,25 +59,25 @@
       </section>
     </div>
 
-    <Dialog v-model:visible="newGroupDialog" header="새 그룹 추가" modal style="width:380px">
+    <Dialog v-model:visible="newGroupDialog" :header="t('LBL_CODE_NEW_GROUP')" modal style="width:380px">
       <div class="form-grid">
-        <label>그룹 ID *</label>
+        <label>{{ t('LBL_CODE_GROUP_ID_REQ') }}</label>
         <InputText v-model="newGroup.groupCd" />
-        <label>첫 코드 *</label>
+        <label>{{ t('LBL_CODE_FIRST_REQ') }}</label>
         <InputText v-model="newGroup.code" />
-        <label>코드명 *</label>
+        <label>{{ t('LBL_CODE_NAME_REQ') }}</label>
         <InputText v-model="newGroup.codeName" />
       </div>
       <template #footer>
-        <Button label="취소" severity="secondary" text @click="newGroupDialog = false" />
-        <Button label="추가" icon="pi pi-check" @click="confirmNewGroup" />
+        <Button :label="t('BTN_CANCEL')" severity="secondary" text @click="newGroupDialog = false" />
+        <Button :label="t('BTN_ADD')" icon="pi pi-check" @click="confirmNewGroup" />
       </template>
     </Dialog>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
+import { ref, computed, reactive, onMounted } from 'vue'
 import Button from 'primevue/button'
 import Listbox from 'primevue/listbox'
 import DataTable from 'primevue/datatable'
@@ -89,19 +89,21 @@ import Tag from 'primevue/tag'
 import Dialog from 'primevue/dialog'
 import { useToast } from 'primevue/usetoast'
 import { useAdmin, type AdminCode } from '@/composables/useAdmin'
+import { useLabel } from '@/composables/useLabel'
 
 const admin = useAdmin()
 const toast = useToast()
+const { t } = useLabel()
 
 const groups = ref<{ groupCd: string; codeCount: number }[]>([])
 const selectedGroup = ref<{ groupCd: string; codeCount: number } | null>(null)
 const codes = ref<(AdminCode & { _rowType?: string; _isNew?: boolean })[]>([])
 const loading = ref(false)
 const saving = ref(false)
-const yesNoOptions = [
-  { code: 'Y', label: '사용' },
-  { code: 'N', label: '미사용' }
-]
+const yesNoOptions = computed(() => [
+  { code: 'Y', label: t('STATUS_USE_Y') },
+  { code: 'N', label: t('STATUS_USE_N') }
+])
 
 const newGroupDialog = ref(false)
 const newGroup = reactive({ groupCd: '', code: '', codeName: '' })
@@ -117,7 +119,7 @@ async function loadCodes() {
     const rows = await admin.codeList(selectedGroup.value.groupCd)
     codes.value = rows.map(r => ({ ...r }))
   } catch (e: any) {
-    toast.add({ severity: 'error', summary: '조회 실패', detail: e.message || String(e), life: 3000 })
+    toast.add({ severity: 'error', summary: t('MSG_LOAD_FAILED'), detail: e.message || String(e), life: 3000 })
   } finally {
     loading.value = false
   }
@@ -153,14 +155,14 @@ async function onDelete(row: any) {
     codes.value = codes.value.filter(c => c !== row)
     return
   }
-  if (!confirm(`'${row.code}' 코드를 삭제합니다.`)) return
+  if (!confirm(t('MSG_CODE_DELETE_CONFIRM').replace('{code}', row.code || ''))) return
   try {
     await admin.codeDelete(row.groupCd, row.code)
-    toast.add({ severity: 'success', summary: '삭제 완료', life: 2000 })
+    toast.add({ severity: 'success', summary: t('MSG_DELETE_DONE'), life: 2000 })
     await loadCodes()
     await loadGroups()
   } catch (e: any) {
-    toast.add({ severity: 'error', summary: '삭제 실패', detail: e.message || String(e), life: 4000 })
+    toast.add({ severity: 'error', summary: t('MSG_DELETE_FAILED'), detail: e.message || String(e), life: 4000 })
   }
 }
 
@@ -168,17 +170,17 @@ async function onSave() {
   if (!selectedGroup.value) return
   const rows = codes.value.filter(c => c._rowType === 'C' || c._rowType === 'U')
   if (!rows.length) {
-    toast.add({ severity: 'info', summary: '변경된 항목 없음', life: 2000 })
+    toast.add({ severity: 'info', summary: t('MSG_NO_CHANGES'), life: 2000 })
     return
   }
   saving.value = true
   try {
     await admin.codeSave(rows as any)
-    toast.add({ severity: 'success', summary: '저장 완료', detail: `${rows.length}건`, life: 2000 })
+    toast.add({ severity: 'success', summary: t('MSG_SAVE_DONE'), detail: `${rows.length}`, life: 2000 })
     await loadCodes()
     await loadGroups()
   } catch (e: any) {
-    toast.add({ severity: 'error', summary: '저장 실패', detail: e.message || String(e), life: 4000 })
+    toast.add({ severity: 'error', summary: t('MSG_SAVE_FAILED'), detail: e.message || String(e), life: 4000 })
   } finally {
     saving.value = false
   }
@@ -193,18 +195,18 @@ function onAddGroup() {
 
 async function confirmNewGroup() {
   if (!newGroup.groupCd || !newGroup.code || !newGroup.codeName) {
-    toast.add({ severity: 'warn', summary: '입력 필요', detail: '모든 항목 필수.', life: 3000 })
+    toast.add({ severity: 'warn', summary: t('MSG_INPUT_REQUIRED'), detail: t('MSG_CODE_ALL_REQ'), life: 3000 })
     return
   }
   try {
     await admin.codeSave([{ ...newGroup, sortOrder: 0, useYn: 'Y', _rowType: 'C' }] as any)
-    toast.add({ severity: 'success', summary: '그룹 추가됨', life: 2000 })
+    toast.add({ severity: 'success', summary: t('MSG_CODE_GROUP_ADDED'), life: 2000 })
     newGroupDialog.value = false
     await loadGroups()
     selectedGroup.value = groups.value.find(g => g.groupCd === newGroup.groupCd) || null
     await loadCodes()
   } catch (e: any) {
-    toast.add({ severity: 'error', summary: '추가 실패', detail: e.message || String(e), life: 4000 })
+    toast.add({ severity: 'error', summary: t('MSG_CODE_ADD_FAILED'), detail: e.message || String(e), life: 4000 })
   }
 }
 

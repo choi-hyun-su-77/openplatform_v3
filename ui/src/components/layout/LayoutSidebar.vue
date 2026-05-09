@@ -45,7 +45,7 @@
           @click="toggleGroup(menu.menuId)"
         >
           <i :class="menu.icon || 'ti ti-folder'" class="menu-icon"></i>
-          <span v-if="!collapsed" class="menu-label">{{ menu.menuName }}</span>
+          <span v-if="!collapsed" class="menu-label">{{ menuLabel(menu) }}</span>
           <i
             v-if="!collapsed"
             class="pi menu-arrow"
@@ -60,7 +60,7 @@
           @click="handleMenuClick(menu)"
         >
           <i :class="menu.icon || 'ti ti-point'" class="menu-icon"></i>
-          <span v-if="!collapsed" class="menu-label">{{ menu.menuName }}</span>
+          <span v-if="!collapsed" class="menu-label">{{ menuLabel(menu) }}</span>
         </div>
         <!-- 자식 메뉴 목록: 그룹이 펼쳐진 상태이고 사이드바가 확장된 경우에만 표시 -->
         <div
@@ -76,7 +76,7 @@
             @click="handleMenuClick(child)"
           >
             <i :class="child.icon || 'ti ti-point'" class="menu-icon"></i>
-            <span class="menu-label">{{ child.menuName }}</span>
+            <span class="menu-label">{{ menuLabel(child) }}</span>
           </div>
         </div>
       </div>
@@ -88,6 +88,20 @@
 import { ref, computed, watch, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/store/auth'  // 인증 스토어 (메뉴 트리 데이터)
+import { useLabel } from '@/composables/useLabel'
+
+const { t } = useLabel()
+
+/**
+ * 메뉴명 i18n: cm_i18n_message 의 MENU_{ID} 키를 우선 사용,
+ * 없으면 DB에 저장된 한국어 menu_name 폴백.
+ * 예: menuId='dashboard' → t('MENU_DASHBOARD', '대시보드')
+ *     menuId='settings_notify' → t('MENU_SETTINGS_NOTIFY', '알림설정')
+ */
+function menuLabel(m: { menuId: string; menuName: string }): string {
+  const key = 'MENU_' + (m.menuId || '').toUpperCase()
+  return t(key, m.menuName)
+}
 
 /** 사이드바 메뉴 항목 타입 (authStore.menuTree 항목과 동일 구조) */
 interface SidebarMenu {

@@ -2,22 +2,22 @@
   <div class="dashboard">
     <header class="dash-head">
       <div class="left">
-        <h2>대시보드</h2>
-        <p class="greeting">안녕하세요, {{ auth.user?.userName || '사용자' }}님</p>
+        <h2>{{ t('LBL_PAGE_DASHBOARD') }}</h2>
+        <p class="greeting">{{ t('LBL_DASH_GREETING').replace('{name}', auth.user?.userName || t('LBL_DASH_GUEST')) }}</p>
       </div>
       <div class="right">
         <button v-if="!editMode" class="btn-edit" @click="enterEdit">
-          <i class="pi pi-pencil" /> 편집
+          <i class="pi pi-pencil" /> {{ t('BTN_DASH_EDIT') }}
         </button>
         <template v-else>
           <button class="btn-add" @click="showAddPicker = !showAddPicker">
-            <i class="pi pi-plus" /> 위젯 추가
+            <i class="pi pi-plus" /> {{ t('BTN_DASH_ADD_WIDGET') }}
           </button>
           <button class="btn-save" @click="save" :disabled="saving">
-            <i class="pi pi-check" /> 저장
+            <i class="pi pi-check" /> {{ t('BTN_SAVE') }}
           </button>
           <button class="btn-cancel" @click="cancelEdit">
-            <i class="pi pi-times" /> 취소
+            <i class="pi pi-times" /> {{ t('BTN_CANCEL') }}
           </button>
         </template>
       </div>
@@ -26,7 +26,7 @@
     <!-- 위젯 추가 picker (편집 모드에서만) -->
     <div v-if="editMode && showAddPicker" class="add-picker">
       <div class="picker-head">
-        <strong>추가할 위젯 선택</strong>
+        <strong>{{ t('LBL_DASH_PICK_WIDGET') }}</strong>
         <button class="x" @click="showAddPicker = false"><i class="pi pi-times" /></button>
       </div>
       <div class="picker-grid">
@@ -98,6 +98,9 @@
 import { ref, computed, onMounted, type Component } from 'vue';
 import { useAuthStore } from '@/store/auth';
 import { useWidget, type UserWidget, type WidgetCatalog } from '@/composables/useWidget';
+import { useLabel } from '@/composables/useLabel';
+
+const { t } = useLabel();
 
 import WidgetAttendance      from '@/components/dashboard/widgets/WidgetAttendance.vue';
 import WidgetLeaveBalance    from '@/components/dashboard/widgets/WidgetLeaveBalance.vue';

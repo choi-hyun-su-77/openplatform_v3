@@ -2,25 +2,25 @@
   <Dialog v-model:visible="visible" :header="dialogTitle" modal :style="{ width: '600px' }" :closable="true">
     <div class="compose-form">
       <div class="field">
-        <label>받는 사람</label>
+        <label>{{ t('LBL_MAIL_TO') }}</label>
         <InputText v-model="form.to" placeholder="email@example.com" class="w-full" />
       </div>
       <div class="field">
-        <label>참조 (CC)</label>
-        <InputText v-model="form.cc" placeholder="선택" class="w-full" />
+        <label>{{ t('LBL_MAIL_CC') }}</label>
+        <InputText v-model="form.cc" :placeholder="t('LBL_MAIL_OPTIONAL')" class="w-full" />
       </div>
       <div class="field">
-        <label>제목</label>
-        <InputText v-model="form.subject" placeholder="제목" class="w-full" />
+        <label>{{ t('LBL_TITLE') }}</label>
+        <InputText v-model="form.subject" :placeholder="t('LBL_TITLE')" class="w-full" />
       </div>
       <div class="field">
-        <label>본문</label>
+        <label>{{ t('LBL_APPROVAL_CONTENT') }}</label>
         <Textarea v-model="form.body" :rows="12" class="w-full" />
       </div>
     </div>
     <template #footer>
-      <Button label="임시저장" icon="pi pi-save" severity="secondary" @click="handleDraft" :loading="saving" />
-      <Button label="발송" icon="pi pi-send" @click="handleSend" :loading="sending" />
+      <Button :label="t('BTN_MAIL_DRAFT')" icon="pi pi-save" severity="secondary" @click="handleDraft" :loading="saving" />
+      <Button :label="t('BTN_MAIL_SEND')" icon="pi pi-send" @click="handleSend" :loading="sending" />
     </template>
   </Dialog>
 </template>
@@ -34,12 +34,14 @@ import InputText from 'primevue/inputtext';
 import Textarea from 'primevue/textarea';
 import { useAuthStore } from '@/store/auth';
 import { useMessage } from '@/composables/useMessage';
+import { useLabel } from '@/composables/useLabel';
 
 const props = defineProps<{ replyTo?: any; forwardOf?: any }>();
 const emit = defineEmits<{ sent: [] }>();
 const visible = defineModel<boolean>('visible', { default: false });
 const auth = useAuthStore();
 const { success, error } = useMessage();
+const { t } = useLabel();
 
 const sending = ref(false);
 const saving = ref(false);
@@ -47,9 +49,9 @@ const saving = ref(false);
 const form = ref({ to: '', cc: '', subject: '', body: '' });
 
 const dialogTitle = computed(() => {
-  if (props.replyTo) return '답장';
-  if (props.forwardOf) return '전달';
-  return '새 메일 작성';
+  if (props.replyTo) return t('LBL_MAIL_REPLY');
+  if (props.forwardOf) return t('LBL_MAIL_FORWARD');
+  return t('LBL_MAIL_COMPOSE_HEADER');
 });
 
 watch(() => [visible.value, props.replyTo, props.forwardOf], ([v]) => {

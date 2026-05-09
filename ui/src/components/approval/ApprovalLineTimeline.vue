@@ -29,7 +29,7 @@
           <i class="pi pi-comment"></i> {{ slotProps.item.comment }}
         </div>
         <div v-if="slotProps.item.actedByNo && slotProps.item.actedByNo !== slotProps.item.approverNo" class="delegated">
-          <i class="pi pi-user-edit"></i> 대결: {{ slotProps.item.actedByNo }}
+          <i class="pi pi-user-edit"></i> {{ t('LBL_APPROVAL_DELEGATED_BY') }}: {{ slotProps.item.actedByNo }}
         </div>
       </div>
     </template>
@@ -40,6 +40,9 @@
 import { computed } from 'vue';
 import Timeline from 'primevue/timeline';
 import Tag from 'primevue/tag';
+import { useLabel } from '@/composables/useLabel';
+
+const { t } = useLabel();
 
 interface ApprovalLine {
   lineId: number | string;
@@ -70,13 +73,7 @@ function iconFor(status: string): string {
 }
 
 function statusLabel(status: string): string {
-  switch (status) {
-    case 'APPROVED': return '승인';
-    case 'REJECTED': return '반려';
-    case 'SKIPPED':  return '전결';
-    case 'PENDING':
-    default:         return '대기';
-  }
+  return t('STATUS_APP_LINE_' + (status || 'PENDING'), status || '');
 }
 
 function severityFor(status: string): 'success' | 'danger' | 'warn' | 'secondary' {
