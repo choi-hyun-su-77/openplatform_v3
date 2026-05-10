@@ -1,6 +1,6 @@
 ﻿-- ============================================================
 -- openplatform_v3 [main] — schema.sql (idempotent)
--- Generated: 2026-05-10 08:36:27
+-- Generated: 2026-05-10 09:07:25
 -- DB: platform_v3 @ v3-postgres
 -- Tables: 30 (whitelist 기반, 로그/감사 제외)
 -- ============================================================
@@ -8,7 +8,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict VOSborudrH8GS0ssLy6d1u6kunmdhjTp1d8F3gr0u4yIdXtlX2NkH2kRPoADAA7
+\restrict Fo4beg0oxyNWBYwfDqEiyBhLnte1u6504igOR6NlaST3FCrf0ItCLAnsuhD5dLu
 
 -- Dumped from database version 16.13
 -- Dumped by pg_dump version 16.13
@@ -1865,5 +1865,5 @@ ALTER TABLE ONLY platform_v3.rm_booking
 -- PostgreSQL database dump complete
 --
 
-\unrestrict VOSborudrH8GS0ssLy6d1u6kunmdhjTp1d8F3gr0u4yIdXtlX2NkH2kRPoADAA7
+\unrestrict Fo4beg0oxyNWBYwfDqEiyBhLnte1u6504igOR6NlaST3FCrf0ItCLAnsuhD5dLu
 

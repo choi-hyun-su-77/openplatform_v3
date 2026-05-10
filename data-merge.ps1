@@ -86,6 +86,13 @@ function Invoke-StatusOne {
     return $false
 }
 
+function Get-ContainerNetwork {
+    param([string]$ContainerName)
+    $nets = docker inspect $ContainerName --format '{{range $k,$v := .NetworkSettings.Networks}}{{$k}} {{end}}'
+    if (-not $nets) { throw "No network found for $ContainerName" }
+    return ($nets.Trim() -split '\s+')[0]
+}
+
 function Invoke-ExportOne {
     param($Files)
     $env = Read-EnvFile $Files.Env
@@ -124,31 +131,57 @@ function Invoke-ExportOne {
     Set-Content -Path $Files.Schema -Value ($header + $schemaContent) -NoNewline -Encoding utf8
     Remove-Item $schemaTmp.FullName
 
-    # Data (idempotent merge)
-    $dataTmp = New-TemporaryFile
+    # Data: pg_dump (with ON CONFLICT DO NOTHING) → pg-postprocess.py (true UPSERT)
+    $rawTmp = New-TemporaryFile
     & docker exec -e PGPASSWORD=$env['DB_PASSWORD'] $env['DB_CONTAINER'] pg_dump `
         -U $env['DB_USER'] -d $env['DB_NAME'] --data-only --column-inserts --on-conflict-do-nothing `
         --no-owner --no-acl --disable-triggers `
-        @tableArgs > $dataTmp.FullName
+        @tableArgs > $rawTmp.FullName
     if ($LASTEXITCODE -ne 0) { throw "[$($Files.Label)] pg_dump (data) failed" }
+
+    # Post-process: replace ON CONFLICT DO NOTHING → ON CONFLICT (pk) DO UPDATE SET ... (true MERGE/UPSERT)
+    $postprocessor = Join-Path $SnapshotDir 'pg-postprocess.py'
+    if (-not (Test-Path $postprocessor)) { throw "Missing pg-postprocess.py" }
+    $dbHost = $env['DB_CONTAINER']
+    $dbName = $env['DB_NAME']
+    $dbUser = $env['DB_USER']
+    $dbPwd  = $env['DB_PASSWORD']
+    $dbSchema = $env['DB_SCHEMA']
+    $network = Get-ContainerNetwork $dbHost
+    $upsertTmp = New-TemporaryFile
+    Get-Content $rawTmp.FullName -Raw | docker run --rm -i `
+        --network $network `
+        -e "DB_HOST=$dbHost" `
+        -e "DB_PORT=5432" `
+        -e "DB_NAME=$dbName" `
+        -e "DB_USER=$dbUser" `
+        -e "DB_PASSWORD=$dbPwd" `
+        -e "DB_SCHEMA=$dbSchema" `
+        -v "${SnapshotDir}:/work:ro" `
+        python:3.12-slim `
+        bash -c "pip install --quiet --root-user-action=ignore 'psycopg[binary]' && python /work/pg-postprocess.py" > $upsertTmp.FullName
+    if ($LASTEXITCODE -ne 0) { throw "[$($Files.Label)] pg-postprocess failed" }
+    Remove-Item $rawTmp.FullName
 
     $dataHeader = @"
 -- ============================================================
--- $ModuleName [$($Files.Label)] — data.sql (idempotent merge)
+-- $ModuleName [$($Files.Label)] — data.sql (true MERGE / UPSERT)
 -- Generated: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')
 -- DB: $($env['DB_NAME']) @ $($env['DB_CONTAINER'])
--- Mode: INSERT ... ON CONFLICT DO NOTHING (기존 데이터 보존)
+-- Mode: INSERT ... ON CONFLICT (pk) DO UPDATE SET non_pk = EXCLUDED.non_pk
+--       (기존 행은 snapshot 값으로 갱신, 없는 행은 추가, all-PK 테이블은 DO NOTHING)
 -- ============================================================
 
 "@
-    $dataContent = Get-Content $dataTmp.FullName -Raw
-    Set-Content -Path $Files.Data -Value ($dataHeader + $dataContent) -NoNewline -Encoding utf8
-    Remove-Item $dataTmp.FullName
+    $upsertContent = Get-Content $upsertTmp.FullName -Raw
+    Set-Content -Path $Files.Data -Value ($dataHeader + $upsertContent) -NoNewline -Encoding utf8
+    Remove-Item $upsertTmp.FullName
 
     $schemaSize = [math]::Round((Get-Item $Files.Schema).Length / 1KB, 1)
     $dataSize = [math]::Round((Get-Item $Files.Data).Length / 1KB, 1)
     $insertCount = (Select-String -Path $Files.Data -Pattern '^INSERT INTO' -CaseSensitive).Count
-    Write-Host "[+] [$($Files.Label)] schema: $schemaSize KB / data: $dataSize KB ($insertCount INSERT)" -ForegroundColor Green
+    $upsertCount = (Select-String -Path $Files.Data -Pattern 'ON CONFLICT \(' -CaseSensitive).Count
+    Write-Host "[+] [$($Files.Label)] schema: $schemaSize KB / data: $dataSize KB ($insertCount INSERT, $upsertCount UPSERT)" -ForegroundColor Green
 }
 
 function Invoke-ImportOne {

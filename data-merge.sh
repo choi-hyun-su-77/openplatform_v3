@@ -72,6 +72,10 @@ status_one() {
     fi
 }
 
+container_network() {
+    docker inspect "$1" --format '{{range $k,$v := .NetworkSettings.Networks}}{{$k}}{{"\n"}}{{end}}' | head -n1
+}
+
 export_one() {
     eval "$(label_files "$1")"
     load_env "$ENV"
@@ -105,26 +109,48 @@ export_one() {
     } > "$SCHEMA"
     rm -f "$tmp"
 
-    tmp=$(mktemp)
+    # Data: pg_dump → pg-postprocess.py (true UPSERT)
+    [[ -f "$SNAPSHOT_DIR/pg-postprocess.py" ]] || { echo "Missing pg-postprocess.py" >&2; return 1; }
+    local raw upsert net
+    raw=$(mktemp); upsert=$(mktemp)
     # shellcheck disable=SC2086
     docker exec -e PGPASSWORD="$DB_PASSWORD" "$DB_CONTAINER" pg_dump \
         -U "$DB_USER" -d "$DB_NAME" --data-only --column-inserts --on-conflict-do-nothing \
         --no-owner --no-acl --disable-triggers \
-        $args > "$tmp"
+        $args > "$raw"
+
+    net=$(container_network "$DB_CONTAINER")
+    docker run --rm -i \
+        --network "$net" \
+        -e DB_HOST="$DB_CONTAINER" \
+        -e DB_PORT=5432 \
+        -e DB_NAME="$DB_NAME" \
+        -e DB_USER="$DB_USER" \
+        -e DB_PASSWORD="$DB_PASSWORD" \
+        -e DB_SCHEMA="$DB_SCHEMA" \
+        -v "$SNAPSHOT_DIR:/work:ro" \
+        python:3.12-slim \
+        bash -c "pip install --quiet --root-user-action=ignore 'psycopg[binary]' && python /work/pg-postprocess.py" \
+        < "$raw" > "$upsert"
+    rm -f "$raw"
+
     {
         echo "-- ============================================================"
-        echo "-- $MODULE_NAME [$LABEL] — data.sql (idempotent merge)"
+        echo "-- $MODULE_NAME [$LABEL] — data.sql (true MERGE / UPSERT)"
         echo "-- Generated: $(date '+%Y-%m-%d %H:%M:%S')"
         echo "-- DB: $DB_NAME @ $DB_CONTAINER"
-        echo "-- Mode: INSERT ... ON CONFLICT DO NOTHING"
+        echo "-- Mode: INSERT ... ON CONFLICT (pk) DO UPDATE SET non_pk = EXCLUDED.non_pk"
+        echo "--       (기존 행은 snapshot 값으로 갱신, 없는 행은 추가)"
         echo "-- ============================================================"
         echo ""
-        cat "$tmp"
+        cat "$upsert"
     } > "$DATA"
-    rm -f "$tmp"
+    rm -f "$upsert"
 
-    local ic; ic=$(grep -c '^INSERT INTO' "$DATA" || true)
-    echo "[+] [$LABEL] schema $(du -k "$SCHEMA" | cut -f1) KB / data $(du -k "$DATA" | cut -f1) KB ($ic INSERT)"
+    local ic uc
+    ic=$(grep -c '^INSERT INTO' "$DATA" || true)
+    uc=$(grep -c 'ON CONFLICT (' "$DATA" || true)
+    echo "[+] [$LABEL] schema $(du -k "$SCHEMA" | cut -f1) KB / data $(du -k "$DATA" | cut -f1) KB ($ic INSERT, $uc UPSERT)"
 }
 
 import_one() {
