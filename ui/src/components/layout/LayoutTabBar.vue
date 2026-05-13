@@ -41,8 +41,8 @@
       >
         <!-- 탭 아이콘: icon이 있으면 표시 -->
         <i v-if="tab.icon" :class="tab.icon" class="tab-icon"></i>
-        <!-- 탭 제목 텍스트 -->
-        <span class="tab-title">{{ tab.title }}</span>
+        <!-- 탭 제목 텍스트 — titleKey 가 있으면 i18n 라벨 우선, 없으면 title 폴백 -->
+        <span class="tab-title">{{ tabLabel(tab) }}</span>
         <!-- 닫기 버튼: closable=true인 탭만 표시 -->
         <i
           v-if="tab.closable"
@@ -75,6 +75,7 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useTabStore, type TabItem } from '@/store/tab'
+import { useLabel } from '@/composables/useLabel'
 import ContextMenu from 'primevue/contextmenu'
 import Menu from 'primevue/menu'
 
@@ -82,6 +83,16 @@ import Menu from 'primevue/menu'
 const router = useRouter()
 /** 탭 스토어 (탭 상태 및 액션) */
 const tabStore = useTabStore()
+/** i18n 라벨 함수 (titleKey 우선, title 폴백) */
+const { t } = useLabel()
+
+/**
+ * 탭 표시 라벨 — titleKey 가 있으면 i18n 라벨, 없으면 title 폴백.
+ * 페이지 reload / 메뉴 일괄 액션 시에도 활성 로케일의 라벨이 항상 표시된다.
+ */
+function tabLabel(tab: TabItem): string {
+  return tab.titleKey ? t(tab.titleKey, tab.title) : tab.title
+}
 
 /** 스크롤 컨테이너 ref (마우스 휠 스크롤 대상) */
 const scrollContainer = ref<HTMLDivElement | null>(null)

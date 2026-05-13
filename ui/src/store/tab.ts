@@ -43,8 +43,14 @@ import { ref, computed } from 'vue'
 export interface TabItem {
   /** 메뉴 고유 ID — 탭의 식별자로 사용 (fw_menu.menu_id와 매칭) */
   menuId: string
-  /** 탭에 표시되는 제목 (route.meta.title 또는 메뉴명) */
+  /** 탭에 표시되는 제목 (route.meta.title 또는 메뉴명) — locale 폴백 텍스트 */
   title: string
+  /**
+   * i18n 라벨 키 — 렌더 시점에 useLabel.t(titleKey, title) 로 해석된다.
+   * 예: 'MENU_DASHBOARD'. 없으면 title 만 사용.
+   * 이 키로 페이지 reload / 메뉴 액션 시에도 활성 로케일의 라벨이 항상 표시된다.
+   */
+  titleKey?: string
   /** 라우터 경로 (클릭 시 이동할 URL) */
   path: string
   /** PrimeIcons 클래스명 (예: 'pi pi-home') — 탭에 아이콘 표시용 */
@@ -73,6 +79,7 @@ const MAX_TAB_COUNT = 15
 const DEFAULT_DASHBOARD_TAB: TabItem = {
   menuId: 'dashboard',
   title: '대시보드',
+  titleKey: 'MENU_DASHBOARD',
   path: '/dashboard',
   icon: 'pi pi-home',
   componentName: 'PageDashboard',
@@ -121,6 +128,26 @@ export const useTabStore = defineStore('tab', () => {
   function _saveToStorage(): void {
     sessionStorage.setItem(STORAGE_KEY_TABS, JSON.stringify(tabs.value))
     sessionStorage.setItem(STORAGE_KEY_ACTIVE, activeMenuId.value)
+  }
+
+  /**
+   * 단일 탭의 title 을 서버 menus 의 활성 로케일 menuName 으로 갱신한다.
+   * authStore 동적 import — store 모듈 간 순환 의존 회피.
+   * authStore 가 아직 미초기화이거나 menus 가 비어 있으면 조용히 무시.
+   * (LayoutTabBar 는 titleKey 우선이지만, titleKey 가 없는 동적 탭은 이 함수로 폴백.)
+   */
+  function _resolveTitleFromServerMenus(tab: TabItem): void {
+    try {
+      import('./auth').then(({ useAuthStore }) => {
+        const authStore = useAuthStore()
+        const serverMenu = (authStore.menus as Record<string, unknown>[] | undefined)
+          ?.find(m => m.menuId === tab.menuId)
+        if (serverMenu?.menuName) {
+          tab.title = serverMenu.menuName as string
+          _saveToStorage()
+        }
+      }).catch(() => { /* 초기화 시점 — 무시 */ })
+    } catch { /* 무시 */ }
   }
 
   /**
@@ -184,8 +211,11 @@ export const useTabStore = defineStore('tab', () => {
     const restored = _restoreFromStorage()
     if (!restored) {
       // 복원할 데이터가 없으면 대시보드 탭으로 초기화
+      // — 초기 title 도 활성 로케일의 서버 menuName 으로 해석한다 (lazy import 로 순환 의존 회피)
+      // — titleKey('MENU_DASHBOARD') 가 LayoutTabBar 에서 항상 우선 적용되므로 이중 안전망.
       tabs.value = [{ ...DEFAULT_DASHBOARD_TAB }]
       activeMenuId.value = DEFAULT_DASHBOARD_TAB.menuId
+      _resolveTitleFromServerMenus(tabs.value[0])
       _saveToStorage()
     }
 
@@ -232,10 +262,11 @@ export const useTabStore = defineStore('tab', () => {
     // 1. 이미 열린 탭인지 확인 — menuId만으로 식별 (한 메뉴 = 한 탭 원칙)
     const existing = tabs.value.find(tab => tab.menuId === item.menuId)
     if (existing) {
-      // 기존 탭의 path/title/icon을 새 값으로 갱신 (딥링크의 query string 보존)
+      // 기존 탭의 path/title/icon/titleKey를 새 값으로 갱신 (딥링크의 query string 보존)
       // closable과 menuId는 변경하지 않는다(고정 탭의 closable=false 보호).
       existing.path = item.path
       if (item.title) existing.title = item.title
+      if (item.titleKey !== undefined) existing.titleKey = item.titleKey
       if (item.icon !== undefined) existing.icon = item.icon
       activeMenuId.value = existing.menuId
       _saveToStorage()
